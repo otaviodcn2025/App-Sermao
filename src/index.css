@@ -1,0 +1,72 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --font-display: 'Inter', ui-sans-serif, system-ui, sans-serif;
+}
+
+@layer base {
+  body {
+    @apply bg-slate-50 text-slate-900 antialiased;
+  }
+
+  /* Custom Scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply bg-slate-200 rounded-full hover:bg-slate-300 transition-colors;
+  }
+}
+
+/* TipTap specific overrides */
+.tiptap p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  color: #adb5bd;
+  pointer-events: none;
+  height: 0;
+}
+
+.tiptap {
+  outline: none;
+}
+
+.tiptap ul {
+  list-style-type: disc !important;
+}
+
+.tiptap ol {
+  list-style-type: decimal !important;
+}
+
+.tiptap blockquote {
+  border-left: 4px solid #fed7aa;
+  padding-left: 1rem;
+  font-style: italic;
+  color: #4b5563;
+  margin: 1.5rem 0;
+}
+
+.prose h2 {
+  @apply text-xl font-bold tracking-tight text-slate-800 mb-4 mt-6;
+}
+
+.prose p {
+  @apply text-lg leading-relaxed text-slate-700 mb-4;
+}
+
+.prose blockquote {
+  @apply border-l-4 border-orange-200 pl-4 italic text-slate-600 bg-orange-50/30 py-2 rounded-r-lg mb-4;
+}
+
+.prose ul, .prose ol {
+  @apply ml-6 mb-4 space-y-2;
+}
+
+.prose li {
+  @apply text-lg text-slate-700;
+}
