@@ -17,7 +17,7 @@ const SYSTEM_INSTRUCTION = `Você é um assistente de redação homilética alta
 Sua função é ajudar pastores e líderes religiosos a estruturar sermões baseados em princípios sólidos de exegese bíblica e aplicação prática, mantendo total fidelidade ao texto bíblico.
 Responda sempre em Português (Brasil) de forma clara e inspiradora.`;
 
-const DEFAULT_MODEL = "gemini-1.5-flash";
+const DEFAULT_MODEL = "gemini-3-flash-preview";
 
 export async function generateSermonOutline(topic: string, baseText?: string) {
   try {
@@ -31,7 +31,7 @@ export async function generateSermonOutline(topic: string, baseText?: string) {
     
     Formate em Markdown claro.`;
 
-    const { text } = await ai.models.generateContent({
+    const response = await ai.models.generateContent({
       model: DEFAULT_MODEL,
       contents: prompt,
       config: {
@@ -39,11 +39,14 @@ export async function generateSermonOutline(topic: string, baseText?: string) {
       }
     });
 
-    return text || "Não foi possível gerar o esboço.";
+    return response.text || "Não foi possível gerar o esboço.";
   } catch (error: any) {
     console.error("Gemini Error (generateSermonOutline):", error);
-    if (error?.message?.includes("API_KEY") || error?.message?.includes("key")) {
-      throw new Error("Erro na Chave de API. Por favor, verifique se a GEMINI_API_KEY está correta nas configurações.");
+    if (error?.message?.includes("API_KEY") || error?.message?.includes("key") || error?.message?.includes("authenticated")) {
+      throw new Error("Erro na Chave de API. Por favor, verifique se a GEMINI_API_KEY está configurada corretamente.");
+    }
+    if (error?.message?.includes("429") || error?.message?.includes("quota") || error?.message?.includes("demand")) {
+      throw new Error("O servidor de IA está com alta demanda. Por favor, tente novamente em instantes.");
     }
     throw new Error(error?.message || "Erro desconhecido na geração do esboço.");
   }
@@ -55,7 +58,7 @@ export async function analyzeVerse(reference: string, textRef: string) {
     const prompt = `Analise profundamente o versículo ou passagem ${reference}: "${textRef}".
     Forneça contexto histórico, análise linguística (grego/hebraico), comentário teológico e sugestão de aplicação/ilustração.`;
 
-    const { text } = await ai.models.generateContent({
+    const response = await ai.models.generateContent({
       model: DEFAULT_MODEL,
       contents: prompt,
       config: {
@@ -63,7 +66,7 @@ export async function analyzeVerse(reference: string, textRef: string) {
       }
     });
 
-    return text || "Não foi possível analisar o versículo.";
+    return response.text || "Não foi possível analisar o versículo.";
   } catch (error: any) {
     console.error("Gemini Error (analyzeVerse):", error);
     throw new Error(error?.message || "Erro desconhecido na análise do versículo.");
@@ -78,7 +81,7 @@ export async function generateSlideDescriptions(sermonContent: string) {
     Sermão:
     ${sermonContent}`;
 
-    const { text } = await ai.models.generateContent({
+    const response = await ai.models.generateContent({
       model: DEFAULT_MODEL,
       contents: prompt,
       config: {
@@ -86,7 +89,7 @@ export async function generateSlideDescriptions(sermonContent: string) {
       }
     });
 
-    return text || "Não foi possível gerar os slides.";
+    return response.text || "Não foi possível gerar os slides.";
   } catch (error: any) {
     console.error("Gemini Error (generateSlideDescriptions):", error);
     throw new Error(error?.message || "Erro desconhecido na geração de slides.");
