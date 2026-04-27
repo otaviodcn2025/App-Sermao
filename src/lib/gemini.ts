@@ -4,9 +4,9 @@ let aiClient: GoogleGenAI | null = null;
 
 function getAIClient() {
   if (!aiClient) {
-    const apiKey = process.env.GEMINI_API_KEY;
+    const apiKey = process.env.Gemini_API_Key1 || process.env.GEMINI_API_KEY;
     if (!apiKey) {
-      throw new Error("GEMINI_API_KEY não configurada no ambiente. Verifique as configurações do projeto.");
+      throw new Error("API Key não configurada. Por favor, adicione 'Gemini_API_Key1' nas configurações do projeto.");
     }
     aiClient = new GoogleGenAI({ apiKey });
   }
@@ -17,7 +17,7 @@ const SYSTEM_INSTRUCTION = `Você é um assistente de redação homilética alta
 Sua função é ajudar pastores e líderes religiosos a estruturar sermões baseados em princípios sólidos de exegese bíblica e aplicação prática, mantendo total fidelidade ao texto bíblico.
 Responda sempre em Português (Brasil) de forma clara e inspiradora.`;
 
-const DEFAULT_MODEL = "gemini-3-flash-preview";
+const DEFAULT_MODEL = "gemini-1.5-flash";
 
 export async function generateSermonOutline(topic: string, baseText?: string) {
   try {
