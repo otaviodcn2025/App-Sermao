@@ -74,7 +74,7 @@ export default function Editor({ content, onChange, onAiAction }: EditorProps) {
       Placeholder.configure({
         placeholder: 'Comece a escrever seu sermão aqui... Use a barra de ferramentas acima para formatar.',
       }),
-    ],
+    ] as any[],
     content,
     onUpdate: ({ editor }) => {
       onChange(editor.getHTML());

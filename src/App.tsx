@@ -104,7 +104,8 @@ export default function App() {
       setAiResponse(result);
     } catch (err) {
       console.error(err);
-      alert('Erro ao processar com IA. Verifique sua conexão e tente novamente.');
+      const errorMessage = err instanceof Error ? err.message : 'Verifique sua conexão e tente novamente.';
+      alert(`Erro ao processar com IA: ${errorMessage}`);
     } finally {
       setIsAiLoading(false);
     }
