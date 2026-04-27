@@ -2,25 +2,35 @@ import { GoogleGenAI } from "@google/genai";
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
 
-const SYSTEM_INSTRUCTION = `Você é um assistente de redação homilética altamente qualificado. 
-Sua função é ajudar pastores a estruturar sermões baseados em princípios de exegese bíblica, mantendo a fidelidade ao texto original.
+const SYSTEM_INSTRUCTION = `Você é um assistente de redação homilética altamente qualificado e experiente. 
+Sua função é ajudar pastores e líderes religiosos a estruturar sermões baseados em princípios sólidos de exegese bíblica e aplicação prática, mantendo total fidelidade ao texto bíblico.
 Você deve ser capaz de:
-1. Gerar esboços estruturados (Introdução, Exposição, Aplicação).
-2. Fornecer contexto histórico e linguístico para versículos.
-3. Sugerir ilustrações e aplicações práticas.
-4. Expandir comentários teológicos.
-Responda sempre em Português (Brasil) a menos que solicitado o contrário.`;
+1. Gerar esboços estruturados (Introdução, Exposição, Aplicação e Conclusão).
+2. Fornecer contexto histórico, geográfico e linguístico para versículos bíblicos.
+3. Sugerir ilustrações criativas e aplicações pertinentes ao cotidiano.
+4. Expandir comentários teológicos e exegéticos.
+5. Identificar temas centrais e subtemas em passagens bíblicas.
+
+Responda sempre em Português (Brasil) progressivamente e de forma clara e inspiradora.`;
+
+const DEFAULT_MODEL = "gemini-3-flash-preview";
 
 export async function generateSermonOutline(topic: string, baseText?: string) {
-  const prompt = `Gere um esboço estruturado para um sermão sobre o tema "${topic}"${baseText ? ` baseado no texto bíblico: ${baseText}` : ''}. O esboço deve incluir:
-  - Título Sugerido
-  - Introdução (com gancho e frase de transição)
-  - Pontos Principais da Exposição (com referências e breves explicações)
-  - Aplicação Prática
-  - Conclusão`;
+  if (!process.env.GEMINI_API_KEY) {
+    throw new Error("GEMINI_API_KEY não configurada.");
+  }
+
+  const prompt = `Gere um esboço estruturado e inspirador para um sermão sobre o tema "${topic}"${baseText ? ` baseado no texto bíblico: ${baseText}` : ''}. O esboço deve ser rico em conteúdo e incluir:
+  - Título Sugerido (Impactante)
+  - Introdução (Gancho inicial forte e frase de transição para o texto principal)
+  - Exposição Bíblica (3 a 4 pontos principais, cada um com uma explicação teológica, uma conexão com o contexto original e uma verdade central)
+  - Aplicação Prática (Como o ouvinte deve agir com base nesta mensagem)
+  - Conclusão (Resumo e apelo final)
+  
+  Formate o texto de forma clara com títulos e separações.`;
 
   const response = await ai.models.generateContent({
-    model: "gemini-3.1-flash-lite-preview",
+    model: DEFAULT_MODEL,
     contents: prompt,
     config: {
       systemInstruction: SYSTEM_INSTRUCTION,
@@ -31,15 +41,20 @@ export async function generateSermonOutline(topic: string, baseText?: string) {
 }
 
 export async function analyzeVerse(reference: string, text: string) {
-  const prompt = `Analise o versículo ${reference}: "${text}".
-  Forneça:
-  1. Contexto Histórico: O que estava acontecendo na época?
-  2. Contexto Linguístico: Significado de palavras-chave no original (Hebraico/Grego).
-  3. Comentário Teológico: Qual a mensagem central?
-  4. Sugestão de Aplicação: Como isso se aplica hoje?`;
+  if (!process.env.GEMINI_API_KEY) {
+    throw new Error("GEMINI_API_KEY não configurada.");
+  }
+
+  const prompt = `Analise profundamente o versículo ou passagem ${reference}: "${text}".
+  Forneça um estudo exegético completo contendo:
+  1. Contexto Histórico e Geográfico: O que estava acontecendo quando isso foi escrito?
+  2. Análise Linguística: Explique termos cruciais no grego ou hebraico originais que enriquecem o entendimento.
+  3. Comentário Teológico: Qual a doutrina ou verdade eterna revelada aqui?
+  4. Sugestão de Ilustração: Uma história ou analogia que ajude a explicar este versículo.
+  5. Aplicação para a Igreja: Como o pastor pode pregar isso para a congregação hoje?`;
 
   const response = await ai.models.generateContent({
-    model: "gemini-3.1-flash-lite-preview",
+    model: DEFAULT_MODEL,
     contents: prompt,
     config: {
       systemInstruction: SYSTEM_INSTRUCTION,
@@ -50,16 +65,21 @@ export async function analyzeVerse(reference: string, text: string) {
 }
 
 export async function generateSlideDescriptions(sermonContent: string) {
-  const prompt = `Com base no seguinte esboço de sermão, descreva visuais para 5-7 slides de apresentação. Para cada slide, forneça:
-  - Título do Slide
-  - Texto Principal
-  - Sugestão de Imagem de Fundo (descrição para um gerador de imagens)
+  if (!process.env.GEMINI_API_KEY) {
+    throw new Error("GEMINI_API_KEY não configurada.");
+  }
+
+  const prompt = `Com base no seguinte conteúdo de sermão, crie um plano de 6 a 8 slides para uma apresentação visual. 
+  Para cada slide, forneça:
+  - Título do Slide: (Ex: Ponto 1: A Esperança no Sofrimento)
+  - Texto para o Slide: (Frase curta e impactante para estar no slide)
+  - Descrição Visual: (Uma descrição detalhada de uma imagem de fundo que combine com a mensagem do slide, ideal para um gerador de imagens IA)
   
-  Sermão:
+  Conteúdo do Sermão:
   ${sermonContent}`;
 
   const response = await ai.models.generateContent({
-    model: "gemini-3-flash-preview",
+    model: DEFAULT_MODEL,
     contents: prompt,
     config: {
       systemInstruction: SYSTEM_INSTRUCTION,
@@ -68,3 +88,4 @@ export async function generateSlideDescriptions(sermonContent: string) {
 
   return response.text;
 }
+

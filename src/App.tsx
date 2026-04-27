@@ -56,7 +56,7 @@ export default function App() {
     const newSermon: Sermon = {
       id: crypto.randomUUID(),
       title: 'Novo Sermão',
-      content: '<h1>Meu Título de Sermão</h1><p>Digite aqui...</p>',
+      content: '<h1>Título do Sermão</h1><p>Comece aqui seu rascunho ou use o botão <strong>Gerar Esboço com IA</strong> acima para estruturar sua mensagem.</p>',
       createdAt: Date.now(),
       updatedAt: Date.now(),
     };
@@ -122,28 +122,15 @@ export default function App() {
     if (!theme) return;
 
     setIsAiLoading(true);
+    setAiResponse(null);
     try {
       const outline = await generateSermonOutline(theme);
-      // Converter markdown simples de volta para HTML básico para o TipTap
-      const htmlOutline = outline?.replace(/\n/g, '<br/>') || '';
-      const newContent = `<h1>${theme}</h1><div>${htmlOutline}</div>`;
-      
-      if (currentSermonId) {
-        updateSermon(newContent);
-      } else {
-        const newSermon: Sermon = {
-          id: crypto.randomUUID(),
-          title: theme,
-          content: newContent,
-          createdAt: Date.now(),
-          updatedAt: Date.now(),
-        };
-        setSermons([newSermon, ...sermons]);
-        setCurrentSermonId(newSermon.id);
+      if (outline) {
+        setAiResponse(outline);
       }
     } catch (err) {
       console.error(err);
-      alert('Erro ao gerar esboço.');
+      alert('Erro ao gerar esboço: ' + (err instanceof Error ? err.message : 'Erro desconhecido'));
     } finally {
       setIsAiLoading(false);
     }
@@ -192,8 +179,11 @@ export default function App() {
                   currentSermonId === s.id ? "bg-orange-50 text-orange-900" : "hover:bg-slate-100 text-slate-700"
                 )}
               >
-                <div className="text-sm font-semibold truncate pr-6">{s.title || 'Sermão sem título'}</div>
-                <div className="text-[10px] text-slate-400 mt-1 uppercase tracking-wider">{formatDate(s.updatedAt)}</div>
+                <div className="text-sm font-bold truncate pr-6 group-hover:text-orange-600 transition-colors">{s.title || 'Sermão sem título'}</div>
+                <div className="flex items-center gap-1.5 text-[9px] text-slate-400 mt-1.5 uppercase font-black tracking-widest">
+                  <History size={10} />
+                  {formatDate(s.updatedAt)}
+                </div>
                 <button 
                   onClick={(e) => deleteSermon(e, s.id)}
                   className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 p-1.5 hover:bg-red-100 hover:text-red-600 rounded-md transition-all"
@@ -238,11 +228,15 @@ export default function App() {
 
           <div className="flex items-center gap-4">
              {isAiLoading && (
-               <div className="flex items-center gap-2 text-xs text-slate-500 font-medium">
-                 <Loader2 size={14} className="animate-spin text-orange-500" />
-                 Gerando com IA...
+               <div className="flex items-center gap-2 text-xs text-slate-500 font-medium bg-slate-50 px-3 py-1 rounded-full border border-slate-100">
+                 <Loader2 size={12} className="animate-spin text-orange-500" />
+                 Pensando...
                </div>
              )}
+             <div className="flex items-center gap-1.5 text-[10px] text-slate-400 font-bold uppercase tracking-tighter bg-slate-50 px-2 py-1 rounded border border-slate-100">
+               <Save size={10} />
+               Salvo Localmente
+             </div>
              <button 
               onClick={() => setIsBibleSearchOpen(!isBibleSearchOpen)}
               className={cn(
