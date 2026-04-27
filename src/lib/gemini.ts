@@ -17,7 +17,7 @@ const SYSTEM_INSTRUCTION = `Você é um assistente de redação homilética alta
 Sua função é ajudar pastores e líderes religiosos a estruturar sermões baseados em princípios sólidos de exegese bíblica e aplicação prática, mantendo total fidelidade ao texto bíblico.
 Responda sempre em Português (Brasil) de forma clara e inspiradora.`;
 
-const DEFAULT_MODEL = "gemini-1.5-flash";
+const DEFAULT_MODEL = "gemini-flash-latest";
 
 export async function generateSermonOutline(topic: string, baseText?: string) {
   try {
@@ -42,11 +42,14 @@ export async function generateSermonOutline(topic: string, baseText?: string) {
     return response.text || "Não foi possível gerar o esboço.";
   } catch (error: any) {
     console.error("Gemini Error (generateSermonOutline):", error);
+    if (error?.message?.includes("404") || error?.message?.includes("not found")) {
+      throw new Error(`Modelo '${DEFAULT_MODEL}' não encontrado. Por favor, verifique se sua API Key tem acesso a este modelo.`);
+    }
     if (error?.message?.includes("API_KEY") || error?.message?.includes("key") || error?.message?.includes("authenticated")) {
-      throw new Error("Erro na Chave de API. Por favor, verifique se a GEMINI_API_KEY está configurada corretamente.");
+      throw new Error("Erro na Chave de API. Por favor, verifique se a GEMINI_API_KEY ou Gemini_API_Key1 está configurada corretamente.");
     }
     if (error?.message?.includes("429") || error?.message?.includes("quota") || error?.message?.includes("demand")) {
-      throw new Error("O servidor de IA está com alta demanda. Por favor, tente novamente em instantes.");
+      throw new Error("O servidor de IA está com alta demanda ou você atingiu o limite de cota. Por favor, tente novamente em instantes.");
     }
     throw new Error(error?.message || "Erro desconhecido na geração do esboço.");
   }
@@ -69,6 +72,12 @@ export async function analyzeVerse(reference: string, textRef: string) {
     return response.text || "Não foi possível analisar o versículo.";
   } catch (error: any) {
     console.error("Gemini Error (analyzeVerse):", error);
+    if (error?.message?.includes("404") || error?.message?.includes("not found")) {
+      throw new Error(`Modelo '${DEFAULT_MODEL}' não encontrado.`);
+    }
+    if (error?.message?.includes("429") || error?.message?.includes("quota") || error?.message?.includes("demand")) {
+      throw new Error("O servidor de IA está com alta demanda ou quota esgotada.");
+    }
     throw new Error(error?.message || "Erro desconhecido na análise do versículo.");
   }
 }
@@ -92,6 +101,12 @@ export async function generateSlideDescriptions(sermonContent: string) {
     return response.text || "Não foi possível gerar os slides.";
   } catch (error: any) {
     console.error("Gemini Error (generateSlideDescriptions):", error);
+    if (error?.message?.includes("404") || error?.message?.includes("not found")) {
+      throw new Error(`Modelo '${DEFAULT_MODEL}' não encontrado.`);
+    }
+    if (error?.message?.includes("429") || error?.message?.includes("quota") || error?.message?.includes("demand")) {
+      throw new Error("O servidor de IA está com alta demanda ou quota esgotada.");
+    }
     throw new Error(error?.message || "Erro desconhecido na geração de slides.");
   }
 }
