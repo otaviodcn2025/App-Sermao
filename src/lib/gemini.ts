@@ -1,16 +1,16 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GoogleGenAI } from "@google/genai";
 
-let genAI: GoogleGenerativeAI | null = null;
+let aiClient: GoogleGenAI | null = null;
 
-function getAI() {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) {
-    throw new Error("GEMINI_API_KEY não configurada no ambiente. Verifique as configurações do projeto.");
+function getAIClient() {
+  if (!aiClient) {
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      throw new Error("GEMINI_API_KEY não configurada no ambiente. Verifique as configurações do projeto.");
+    }
+    aiClient = new GoogleGenAI({ apiKey });
   }
-  if (!genAI) {
-    genAI = new GoogleGenerativeAI(apiKey);
-  }
-  return genAI;
+  return aiClient;
 }
 
 const SYSTEM_INSTRUCTION = `Você é um assistente de redação homilética altamente qualificado e experiente. 
@@ -21,12 +21,7 @@ const DEFAULT_MODEL = "gemini-1.5-flash";
 
 export async function generateSermonOutline(topic: string, baseText?: string) {
   try {
-    const ai = getAI();
-    const model = ai.getGenerativeModel({ 
-      model: DEFAULT_MODEL,
-      systemInstruction: SYSTEM_INSTRUCTION
-    });
-
+    const ai = getAIClient();
     const prompt = `Gere um esboço estruturado e inspirador para um sermão sobre o tema "${topic}"${baseText ? ` baseado no texto bíblico: ${baseText}` : ''}. O esboço deve ser rico em conteúdo e incluir:
     - Título Sugerido (Impactante)
     - Introdução (Gancho forte)
@@ -36,29 +31,39 @@ export async function generateSermonOutline(topic: string, baseText?: string) {
     
     Formate em Markdown claro.`;
 
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
-    return response.text();
+    const { text } = await ai.models.generateContent({
+      model: DEFAULT_MODEL,
+      contents: prompt,
+      config: {
+        systemInstruction: SYSTEM_INSTRUCTION,
+      }
+    });
+
+    return text || "Não foi possível gerar o esboço.";
   } catch (error: any) {
     console.error("Gemini Error (generateSermonOutline):", error);
+    if (error?.message?.includes("API_KEY") || error?.message?.includes("key")) {
+      throw new Error("Erro na Chave de API. Por favor, verifique se a GEMINI_API_KEY está correta nas configurações.");
+    }
     throw new Error(error?.message || "Erro desconhecido na geração do esboço.");
   }
 }
 
-export async function analyzeVerse(reference: string, text: string) {
+export async function analyzeVerse(reference: string, textRef: string) {
   try {
-    const ai = getAI();
-    const model = ai.getGenerativeModel({ 
-      model: DEFAULT_MODEL,
-      systemInstruction: SYSTEM_INSTRUCTION
-    });
-
-    const prompt = `Analise profundamente o versículo ou passagem ${reference}: "${text}".
+    const ai = getAIClient();
+    const prompt = `Analise profundamente o versículo ou passagem ${reference}: "${textRef}".
     Forneça contexto histórico, análise linguística (grego/hebraico), comentário teológico e sugestão de aplicação/ilustração.`;
 
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
-    return response.text();
+    const { text } = await ai.models.generateContent({
+      model: DEFAULT_MODEL,
+      contents: prompt,
+      config: {
+        systemInstruction: SYSTEM_INSTRUCTION,
+      }
+    });
+
+    return text || "Não foi possível analisar o versículo.";
   } catch (error: any) {
     console.error("Gemini Error (analyzeVerse):", error);
     throw new Error(error?.message || "Erro desconhecido na análise do versículo.");
@@ -67,23 +72,23 @@ export async function analyzeVerse(reference: string, text: string) {
 
 export async function generateSlideDescriptions(sermonContent: string) {
   try {
-    const ai = getAI();
-    const model = ai.getGenerativeModel({ 
-      model: DEFAULT_MODEL,
-      systemInstruction: SYSTEM_INSTRUCTION
-    });
-
+    const ai = getAIClient();
     const prompt = `Com base no sermão abaixo, crie um plano de 6-8 slides. Para cada slide forneça: Título, Texto Principal e Descrição Visual para imagem.
     
     Sermão:
     ${sermonContent}`;
 
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
-    return response.text();
+    const { text } = await ai.models.generateContent({
+      model: DEFAULT_MODEL,
+      contents: prompt,
+      config: {
+        systemInstruction: SYSTEM_INSTRUCTION,
+      }
+    });
+
+    return text || "Não foi possível gerar os slides.";
   } catch (error: any) {
     console.error("Gemini Error (generateSlideDescriptions):", error);
     throw new Error(error?.message || "Erro desconhecido na geração de slides.");
   }
 }
-
