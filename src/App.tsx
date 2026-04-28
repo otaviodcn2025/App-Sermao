@@ -123,20 +123,24 @@ export default function App() {
   const createNewSermon = async () => {
     if (!user) return;
     
-    const path = 'sermons';
+    const collectionRef = collection(db, 'sermons');
+    const newDocRef = doc(collectionRef); // Generate ID on client
+    const now = Date.now();
+    
     try {
       const newSermon = {
+        id: newDocRef.id,
         userId: user.uid,
         title: 'Novo Sermão',
         content: '<h1>Título do Sermão</h1><p>Comece aqui seu rascunho ou use o botão <strong>Gerar Esboço com IA</strong> acima para estruturar sua mensagem.</p>',
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
+        createdAt: now,
+        updatedAt: now,
       };
       
-      const docRef = await addDoc(collection(db, path), newSermon);
-      setCurrentSermonId(docRef.id);
+      await setDoc(newDocRef, newSermon);
+      setCurrentSermonId(newDocRef.id);
     } catch (err) {
-      handleFirestoreError(err, OperationType.CREATE, path);
+      handleFirestoreError(err, OperationType.CREATE, 'sermons');
     }
   };
 
@@ -381,6 +385,10 @@ export default function App() {
                 onChange={updateSermon} 
                 onAiAction={handleAiAction}
               />
+            ) : currentSermonId ? (
+              <div className="h-[70vh] flex items-center justify-center">
+                <Loader2 className="animate-spin text-orange-600" size={32} />
+              </div>
             ) : (
               <div className="h-[70vh] flex flex-col items-center justify-center text-slate-400 space-y-4">
                 <div className="bg-slate-50 w-20 h-20 rounded-3xl flex items-center justify-center shadow-inner">

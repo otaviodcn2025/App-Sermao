@@ -54,7 +54,7 @@ service cloud.firestore {
                data.id == sermonId &&
                data.userId == request.auth.uid &&
                data.title is string && data.title.size() <= 255 &&
-               data.content is string && data.content.size() <= 1048576 && // 1MB limit check
+               data.content is string && data.content.size() <= 1048576 &&
                data.createdAt is number &&
                data.updatedAt is number;
       }
@@ -64,15 +64,15 @@ service cloud.firestore {
       allow create: if isSignedIn() && 
                     isValidSermon(incoming()) && 
                     isValidId(sermonId) &&
-                    incoming().createdAt == request.time.toMillis() &&
-                    incoming().updatedAt == request.time.toMillis();
+                    incoming().createdAt <= request.time.toMillis() &&
+                    incoming().updatedAt == incoming().createdAt;
       allow update: if isSignedIn() && 
                     resource.data.userId == request.auth.uid &&
                     isValidSermon(incoming()) &&
                     incoming().userId == existing().userId &&
                     incoming().id == existing().id &&
                     incoming().createdAt == existing().createdAt &&
-                    incoming().updatedAt == request.time.toMillis() &&
+                    incoming().updatedAt >= existing().updatedAt &&
                     incoming().diff(existing()).affectedKeys().hasAny(['title', 'content', 'updatedAt']);
       allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
     }
