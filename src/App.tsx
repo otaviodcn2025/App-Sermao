@@ -243,7 +243,7 @@ export default function App() {
             <div className="w-8 h-8 bg-orange-600 rounded-lg flex items-center justify-center">
               <Sparkles size={18} className="text-white" />
             </div>
-            <h1 className="font-bold text-slate-800 tracking-tight">SermonCraft</h1>
+            <h1 className="font-bold text-slate-800 tracking-tight">ConectaSermon</h1>
           </div>
         </div>
 
