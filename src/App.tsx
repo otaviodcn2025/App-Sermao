@@ -54,10 +54,22 @@ export default function App() {
   const [isAdminPanelOpen, setIsAdminPanelOpen] = useState(false);
   const [sermons, setSermons] = useState<Sermon[]>([]);
   const [currentSermonId, setCurrentSermonId] = useState<string | null>(null);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  const [isBibleSearchOpen, setIsBibleSearchOpen] = useState(true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth > 768);
+  const [isBibleSearchOpen, setIsBibleSearchOpen] = useState(window.innerWidth > 1024);
   const [isAiLoading, setIsAiLoading] = useState(false);
   const [aiResponse, setAiResponse] = useState<string | null>(null);
+
+  // Monitor screen size
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth < 768) {
+        setIsSidebarOpen(false);
+        setIsBibleSearchOpen(false);
+      }
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   // Monitor Auth State
   useEffect(() => {
@@ -330,12 +342,35 @@ export default function App() {
         )}
       </AnimatePresence>
 
-      <div className="flex h-screen bg-slate-50 overflow-hidden font-sans">
+      <div className="flex h-screen bg-slate-50 overflow-hidden font-sans relative">
+      {/* Overlay for mobile sidebars */}
+      <AnimatePresence>
+        {(isSidebarOpen || isBibleSearchOpen) && window.innerWidth < 1024 && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => {
+              setIsSidebarOpen(false);
+              setIsBibleSearchOpen(false);
+            }}
+            className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-40 lg:hidden"
+          />
+        )}
+      </AnimatePresence>
+
       {/* List Sidebar */}
       <motion.aside 
         initial={false}
-        animate={{ width: isSidebarOpen ? 280 : 0, opacity: isSidebarOpen ? 1 : 0 }}
-        className="flex flex-col bg-white border-right border-slate-200 shrink-0 relative overflow-hidden"
+        animate={{ 
+          width: isSidebarOpen ? 280 : 0, 
+          opacity: isSidebarOpen ? 1 : 0,
+          x: isSidebarOpen ? 0 : -280
+        }}
+        className={cn(
+          "flex flex-col bg-white border-r border-slate-200 shrink-0 relative overflow-hidden z-50",
+          "fixed inset-y-0 left-0 lg:relative lg:translate-x-0"
+        )}
       >
         <div className="p-6 border-bottom border-slate-100 flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -401,11 +436,11 @@ export default function App() {
             </div>
           ) : (
             sermons.map(s => (
-              <button
+              <div
                 key={s.id}
                 onClick={() => setCurrentSermonId(s.id)}
                 className={cn(
-                  "w-full text-left p-3 rounded-lg transition-all group relative",
+                  "w-full text-left p-3 rounded-lg transition-all group relative cursor-pointer",
                   currentSermonId === s.id ? "bg-orange-50 text-orange-900" : "hover:bg-slate-100 text-slate-700"
                 )}
               >
@@ -416,11 +451,11 @@ export default function App() {
                 </div>
                 <button 
                   onClick={(e) => deleteSermon(e, s.id)}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 p-1.5 hover:bg-red-100 hover:text-red-600 rounded-md transition-all"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 p-1.5 hover:bg-red-100 hover:text-red-600 rounded-md transition-all z-10"
                 >
                   <Trash2 size={14} />
                 </button>
-              </button>
+              </div>
             ))
           )}
         </div>
@@ -444,52 +479,52 @@ export default function App() {
                 className="flex items-center gap-2 px-3 py-1.5 bg-orange-50 text-orange-700 text-xs font-semibold rounded-full border border-orange-100 hover:bg-orange-100 transition-colors"
               >
                 <Sparkles size={14} />
-                Gerar Esboço com IA
+                <span className="hidden sm:inline">Esboço IA</span>
               </button>
               <button 
                 onClick={() => handleAiAction('slides', '')}
-                className="flex items-center gap-2 px-3 py-1.5 bg-slate-50 text-slate-700 text-xs font-semibold rounded-full border border-slate-100 hover:bg-slate-100 transition-colors"
+                className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-slate-50 text-slate-700 text-xs font-semibold rounded-full border border-slate-100 hover:bg-slate-100 transition-colors"
               >
                 <Presentation size={14} />
-                Gerar Slides
+                Slides
               </button>
             </div>
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 md:gap-4">
              {isAiLoading && (
-               <div className="flex items-center gap-2 text-xs text-slate-500 font-medium bg-slate-50 px-3 py-1 rounded-full border border-slate-100">
+               <div className="hidden sm:flex items-center gap-2 text-xs text-slate-500 font-medium bg-slate-50 px-3 py-1 rounded-full border border-slate-100">
                  <Loader2 size={12} className="animate-spin text-orange-500" />
                  Pensando...
                </div>
              )}
              <button 
                 onClick={() => setIsPresenting(true)}
-                className="flex items-center gap-1.5 text-xs font-bold text-orange-600 bg-orange-50 px-3 py-1.5 rounded-lg border border-orange-100 hover:bg-orange-100 transition-colors"
+                className="flex items-center gap-1.5 text-xs font-bold text-orange-600 bg-orange-50 p-2 md:px-3 md:py-1.5 rounded-lg border border-orange-100 hover:bg-orange-100 transition-colors"
                 title="Modo Apresentação"
               >
-                <Presentation size={14} />
-                Apresentar
+                <Presentation size={16} />
+                <span className="hidden md:inline">Apresentar</span>
               </button>
-              <div className="flex items-center gap-1.5 text-[10px] text-slate-400 font-bold uppercase tracking-tighter bg-slate-50 px-2 py-1 rounded border border-slate-100">
+              <div className="hidden lg:flex items-center gap-1.5 text-[10px] text-slate-400 font-bold uppercase tracking-tighter bg-slate-50 px-2 py-1 rounded border border-slate-100">
                <Save size={10} />
-               Sincronizado na Nuvem
+               Sincronizado
              </div>
              <button 
               onClick={() => setIsBibleSearchOpen(!isBibleSearchOpen)}
               className={cn(
-                "flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-semibold transition-all",
+                "flex items-center gap-2 p-2 md:px-4 md:py-1.5 rounded-lg md:rounded-full text-xs font-semibold transition-all",
                 isBibleSearchOpen ? "bg-slate-900 text-white shadow-md shadow-slate-200" : "bg-slate-100 text-slate-600 border border-slate-200 hover:bg-slate-200"
               )}
             >
-              <BookOpen size={14} />
-              Pesquisa Bíblica
+              <BookOpen size={16} />
+              <span className="hidden md:inline">Bíblia</span>
             </button>
           </div>
         </header>
 
         {/* Editor Body */}
-        <div className="flex-1 overflow-y-auto px-4 py-8 md:px-12 lg:px-24">
+        <div className="flex-1 overflow-y-auto px-4 py-8 md:px-12">
           <div className="max-w-4xl mx-auto">
             {currentSermon ? (
               <Editor 
@@ -565,8 +600,15 @@ export default function App() {
       {/* Bible Sidebar */}
       <motion.aside 
         initial={false}
-        animate={{ width: isBibleSearchOpen ? 320 : 0, opacity: isBibleSearchOpen ? 1 : 0 }}
-        className="flex bg-white overflow-hidden"
+        animate={{ 
+          width: isBibleSearchOpen ? 320 : 0, 
+          opacity: isBibleSearchOpen ? 1 : 0,
+          x: isBibleSearchOpen ? 0 : 320
+        }}
+        className={cn(
+          "flex bg-white overflow-hidden z-50 border-l border-slate-200",
+          "fixed inset-y-0 right-0 lg:relative lg:translate-x-0"
+        )}
       >
         <BibleSearch onAddVerse={addVerseToEditor} />
       </motion.aside>

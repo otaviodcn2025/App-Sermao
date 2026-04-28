@@ -34,7 +34,7 @@ export default function BibleSearch({ onAddVerse }: BibleSearchProps) {
   };
 
   return (
-    <div className="flex flex-col h-full bg-slate-50 border-l border-slate-200 w-80 shrink-0">
+    <div className="flex flex-col h-full bg-slate-50 border-l border-slate-200 w-full">
       <div className="p-4 border-bottom border-slate-200 bg-white">
         <h3 className="text-sm font-semibold text-slate-900 flex items-center gap-2 mb-4">
           <Book size={18} className="text-orange-500" />
