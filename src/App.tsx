@@ -69,7 +69,8 @@ export default function App() {
             setUserProfile(userSnap.data() as UserProfile);
           }
         } catch (err) {
-          handleFirestoreError(err, OperationType.GET, `users/${currentUser.uid}`);
+          console.error('Error fetching user profile:', err);
+          // Don't throw here to avoid blocking auth state transition
         }
       } else {
         setUserProfile(null);
