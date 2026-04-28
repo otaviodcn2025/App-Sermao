@@ -8,9 +8,11 @@
         "uid": { "type": "string" },
         "name": { "type": "string" },
         "email": { "type": "string" },
+        "role": { "type": "string", "enum": ["admin", "user"] },
+        "approved": { "type": "boolean" },
         "createdAt": { "type": "number" }
       },
-      "required": ["uid", "name", "email", "createdAt"]
+      "required": ["uid", "name", "email", "role", "approved", "createdAt"]
     },
     "Sermon": {
       "title": "Sermon",

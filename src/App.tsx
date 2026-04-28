@@ -40,10 +40,15 @@ import {
   orderBy
 } from 'firebase/firestore';
 
+import PresentationMode from './components/PresentationMode';
+import AdminPanel from './components/AdminPanel';
+
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
+  const [isPresenting, setIsPresenting] = useState(false);
+  const [isAdminPanelOpen, setIsAdminPanelOpen] = useState(false);
   const [sermons, setSermons] = useState<Sermon[]>([]);
   const [currentSermonId, setCurrentSermonId] = useState<string | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
@@ -244,8 +249,56 @@ export default function App() {
     return <Auth />;
   }
 
+  if (userProfile && !userProfile.approved && userProfile.role !== 'admin') {
+    return (
+      <div className="h-screen bg-slate-50 flex items-center justify-center p-4 font-sans text-center">
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="max-w-md w-full bg-white p-10 rounded-3xl shadow-xl shadow-slate-200 border border-slate-100"
+        >
+          <div className="w-20 h-20 bg-amber-50 rounded-2xl flex items-center justify-center mx-auto mb-6 text-amber-600">
+            <Clock size={40} className="animate-pulse" />
+          </div>
+          <h2 className="text-2xl font-bold text-slate-800">Aguardando Aprovação</h2>
+          <p className="mt-4 text-slate-500 text-sm leading-relaxed">
+            Sua conta (<span className="font-mono text-slate-800">{user.email}</span>) foi criada com sucesso, mas precisa ser liberada pelo administrador antes do primeiro acesso.
+          </p>
+          <div className="mt-8 pt-8 border-t border-slate-50 flex flex-col gap-4">
+            <button 
+              onClick={() => window.location.reload()}
+              className="w-full py-3.5 bg-orange-600 text-white rounded-xl font-bold text-sm shadow-lg shadow-orange-100"
+            >
+              Verificar Novamente
+            </button>
+            <button 
+              onClick={() => signOut(auth)}
+              className="text-slate-400 text-sm font-bold hover:text-slate-600"
+            >
+              Sair da Conta
+            </button>
+          </div>
+        </motion.div>
+      </div>
+    );
+  }
+
+  if (isAdminPanelOpen && userProfile?.role === 'admin') {
+    return <AdminPanel onBack={() => setIsAdminPanelOpen(false)} />;
+  }
+
   return (
-    <div className="flex h-screen bg-slate-50 overflow-hidden font-sans">
+    <>
+      <AnimatePresence>
+        {isPresenting && currentSermon && (
+          <PresentationMode 
+            sermon={currentSermon} 
+            onClose={() => setIsPresenting(false)} 
+          />
+        )}
+      </AnimatePresence>
+
+      <div className="flex h-screen bg-slate-50 overflow-hidden font-sans">
       {/* List Sidebar */}
       <motion.aside 
         initial={false}
@@ -262,21 +315,40 @@ export default function App() {
         </div>
 
         {/* User Profile Summary */}
-        <div className="px-4 py-3 mx-2 mt-2 bg-slate-50 rounded-xl flex items-center gap-3 border border-slate-100">
-          <div className="w-9 h-9 bg-orange-100 rounded-lg flex items-center justify-center text-orange-700">
+        <div className="px-4 py-3 mx-2 mt-2 bg-white rounded-xl flex items-center gap-3 border border-slate-100 shadow-sm">
+          <div className="w-9 h-9 bg-orange-100 rounded-lg flex items-center justify-center text-orange-700 relative">
             <UserIcon size={18} />
+            {userProfile?.approved && (
+              <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 border-2 border-white rounded-full" />
+            )}
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-bold text-slate-800 truncate">{userProfile?.name || user.displayName || 'Usuário'}</p>
-            <p className="text-[10px] text-slate-500 truncate">{user.email}</p>
+            <div className="flex items-center gap-1">
+              <p className="text-[10px] text-slate-500 truncate">{user.email}</p>
+              {userProfile?.role === 'admin' && (
+                <Shield size={10} className="text-orange-500" />
+              )}
+            </div>
           </div>
-          <button 
-            onClick={handleLogout}
-            className="p-1.5 hover:bg-slate-200 rounded-md text-slate-400 hover:text-slate-600 transition-all"
-            title="Sair"
-          >
-            <LogOut size={14} />
-          </button>
+          <div className="flex items-center gap-1">
+            {userProfile?.role === 'admin' && (
+              <button 
+                onClick={() => setIsAdminPanelOpen(true)}
+                className="p-1.5 hover:bg-slate-100 rounded-md text-orange-400 hover:text-orange-600 transition-all"
+                title="Painel ADM"
+              >
+                <Users size={14} />
+              </button>
+            )}
+            <button 
+              onClick={handleLogout}
+              className="p-1.5 hover:bg-slate-100 rounded-md text-slate-400 hover:text-slate-600 transition-all"
+              title="Sair"
+            >
+              <LogOut size={14} />
+            </button>
+          </div>
         </div>
 
         <div className="p-4">
@@ -359,7 +431,15 @@ export default function App() {
                  Pensando...
                </div>
              )}
-             <div className="flex items-center gap-1.5 text-[10px] text-slate-400 font-bold uppercase tracking-tighter bg-slate-50 px-2 py-1 rounded border border-slate-100">
+             <button 
+                onClick={() => setIsPresenting(true)}
+                className="flex items-center gap-1.5 text-xs font-bold text-orange-600 bg-orange-50 px-3 py-1.5 rounded-lg border border-orange-100 hover:bg-orange-100 transition-colors"
+                title="Modo Apresentação"
+              >
+                <Presentation size={14} />
+                Apresentar
+              </button>
+              <div className="flex items-center gap-1.5 text-[10px] text-slate-400 font-bold uppercase tracking-tighter bg-slate-50 px-2 py-1 rounded border border-slate-100">
                <Save size={10} />
                Sincronizado na Nuvem
              </div>
@@ -459,5 +539,6 @@ export default function App() {
         <BibleSearch onAddVerse={addVerseToEditor} />
       </motion.aside>
     </div>
+    </>
   );
 }

@@ -2,6 +2,8 @@ export interface UserProfile {
   uid: string;
   name: string;
   email: string;
+  role: 'admin' | 'user';
+  approved: boolean;
   createdAt: number;
 }
 

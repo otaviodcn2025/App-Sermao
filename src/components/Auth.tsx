@@ -44,10 +44,13 @@ export default function Auth() {
 
         // Create firestore profile
         try {
+          const isDefaultAdmin = email === 'pastorotavio@gmail.com';
           await setDoc(doc(db, 'users', user.uid), {
             uid: user.uid,
             name: name,
             email: email,
+            role: isDefaultAdmin ? 'admin' : 'user',
+            approved: isDefaultAdmin,
             createdAt: Date.now()
           });
         } catch (fsErr) {
