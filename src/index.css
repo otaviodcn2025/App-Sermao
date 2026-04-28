@@ -7,8 +7,22 @@
 
 @layer base {
   body {
-    @apply bg-slate-50 text-slate-900 antialiased;
+    @apply bg-slate-50 text-slate-900 antialiased overflow-hidden h-[100dvh];
+    -webkit-tap-highlight-color: transparent;
   }
+
+  /* Fix for presentation mode prose font overrides */
+  .presentation-content p, 
+  .presentation-content li, 
+  .presentation-content blockquote p,
+  .presentation-content div.presentation-inner {
+    font-size: inherit !important;
+    line-height: inherit !important;
+  }
+
+  .presentation-content h1 { font-size: 1.8em !important; }
+  .presentation-content h2 { font-size: 1.5em !important; }
+  .presentation-content h3 { font-size: 1.3em !important; }
 
   /* Custom Scrollbar */
   ::-webkit-scrollbar {

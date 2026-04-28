@@ -101,27 +101,31 @@ export default function PresentationMode({ sermon, onClose }: PresentationModePr
           </div>
         </div>
 
-        <div className="flex items-center gap-2 md:gap-3 w-full md:w-auto justify-end">
-          <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl">
+        <div className="flex items-center gap-2 md:gap-4 w-full md:w-auto justify-end">
+          <div className="flex items-center gap-2 bg-white border border-slate-200 p-1 rounded-2xl shadow-sm">
              <button 
-              onClick={() => setFontSize(Math.max(16, fontSize - 2))}
-              className="p-2 hover:bg-white rounded-lg text-slate-600 transition-all font-bold"
+              onClick={() => setFontSize(Math.max(12, fontSize - 4))}
+              className="w-10 h-10 flex items-center justify-center hover:bg-slate-50 rounded-xl text-slate-600 transition-all font-black text-lg active:scale-90"
+              title="Diminuir Fonte"
             >
               A-
             </button>
-            <span className="px-2 text-xs font-bold text-slate-400">{fontSize}px</span>
+            <div className="w-px h-6 bg-slate-100" />
+            <span className="min-w-[40px] text-center text-xs font-black text-slate-400 tabular-nums">{fontSize}</span>
+            <div className="w-px h-6 bg-slate-100" />
             <button 
-              onClick={() => setFontSize(Math.min(48, fontSize + 2))}
-              className="p-2 hover:bg-white rounded-lg text-slate-600 transition-all font-bold"
+              onClick={() => setFontSize(Math.min(80, fontSize + 4))}
+              className="w-10 h-10 flex items-center justify-center hover:bg-slate-50 rounded-xl text-slate-600 transition-all font-black text-lg active:scale-90"
+              title="Aumentar Fonte"
             >
               A+
             </button>
           </div>
           <button 
             onClick={toggleFullscreen}
-            className="p-2.5 hover:bg-slate-200 rounded-xl text-slate-500 transition-colors"
+            className="p-3 hover:bg-slate-200 rounded-2xl text-slate-500 transition-colors bg-white border border-slate-200 shadow-sm active:scale-90"
           >
-            {isFullscreen ? <Minimize2 size={20} /> : <Maximize2 size={20} />}
+            {isFullscreen ? <Minimize2 size={24} /> : <Maximize2 size={24} />}
           </button>
         </div>
       </div>
@@ -130,11 +134,17 @@ export default function PresentationMode({ sermon, onClose }: PresentationModePr
       <div className="flex-1 overflow-y-auto px-6 py-6 md:py-12 scroll-smooth bg-white">
         <div 
           className="max-w-4xl mx-auto prose prose-slate prose-orange presentation-content"
-          style={{ fontSize: `${fontSize}px`, lineHeight: 1.6 }}
+          style={{ 
+            fontSize: `${fontSize}px`, 
+            lineHeight: '1.6',
+            ['--tw-prose-body' as any]: 'inherit',
+            ['--tw-prose-headings' as any]: 'inherit'
+          } as React.CSSProperties}
         >
           <div 
             dangerouslySetInnerHTML={{ __html: sermon.content }}
-            className="[&_p]:text-[length:inherit] [&_li]:text-[length:inherit] [&_blockquote_p]:text-[length:inherit] [&_h1]:text-[1.5em] [&_h2]:text-[1.3em] [&_h3]:text-[1.2em]"
+            className="presentation-inner"
+            style={{ fontSize: 'inherit' }}
           />
         </div>
       </div>

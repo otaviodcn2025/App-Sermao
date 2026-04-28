@@ -57,22 +57,29 @@ export default function App() {
   const [isAdminPanelOpen, setIsAdminPanelOpen] = useState(false);
   const [sermons, setSermons] = useState<Sermon[]>([]);
   const [currentSermonId, setCurrentSermonId] = useState<string | null>(null);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth > 768);
-  const [isBibleSearchOpen, setIsBibleSearchOpen] = useState(window.innerWidth > 1024);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth >= 1024);
+  const [isBibleSearchOpen, setIsBibleSearchOpen] = useState(false); // Bible starts closed for better focus, even on desktop
   const [isAiLoading, setIsAiLoading] = useState(false);
   const [aiResponse, setAiResponse] = useState<string | null>(null);
   const [mobileTab, setMobileTab] = useState<'list' | 'editor' | 'bible'>('editor');
 
   // Monitor screen size
   useEffect(() => {
+    let lastWidth = window.innerWidth;
     const handleResize = () => {
-      if (window.innerWidth < 1024) {
+      const currentWidth = window.innerWidth;
+      
+      // Only trigger if we cross the 1024px breakpoint
+      if (lastWidth < 1024 && currentWidth >= 1024) {
+        setIsSidebarOpen(true);
+        // setIsBibleSearchOpen(true); // Don't auto-open bible search
+      } else if (lastWidth >= 1024 && currentWidth < 1024) {
         setIsSidebarOpen(false);
         setIsBibleSearchOpen(false);
-      } else {
-        setIsSidebarOpen(true);
-        setIsBibleSearchOpen(true);
+        setMobileTab('editor'); // Reset to editor on mobile transition
       }
+      
+      lastWidth = currentWidth;
     };
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
@@ -564,8 +571,8 @@ export default function App() {
         </header>
 
         {/* Editor Body */}
-        <div className="flex-1 overflow-y-auto px-4 py-6 md:px-12">
-          <div className="max-w-4xl mx-auto pb-12">
+        <div className="flex-1 overflow-y-auto overflow-x-hidden px-4 md:px-12 py-6">
+          <div className="max-w-4xl mx-auto pb-24 md:pb-12">
             {currentSermon ? (
               <Editor 
                 content={currentSermon.content} 
