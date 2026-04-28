@@ -14,7 +14,7 @@ import {
   updateProfile
 } from 'firebase/auth';
 import { doc, setDoc } from 'firebase/firestore';
-import { auth, db } from '../lib/firebase';
+import { auth, db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { motion, AnimatePresence } from 'motion/react';
 
 export default function Auth() {
@@ -43,12 +43,16 @@ export default function Auth() {
         await updateProfile(user, { displayName: name });
 
         // Create firestore profile
-        await setDoc(doc(db, 'users', user.uid), {
-          uid: user.uid,
-          name: name,
-          email: email,
-          createdAt: Date.now()
-        });
+        try {
+          await setDoc(doc(db, 'users', user.uid), {
+            uid: user.uid,
+            name: name,
+            email: email,
+            createdAt: Date.now()
+          });
+        } catch (fsErr) {
+          handleFirestoreError(fsErr, OperationType.WRITE, `users/${user.uid}`);
+        }
       }
     } catch (err: any) {
       console.error(err);

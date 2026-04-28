@@ -23,7 +23,7 @@ import Auth from './components/Auth';
 import { Sermon, UserProfile } from './types';
 import { cn, formatDate } from './lib/utils';
 import { generateSermonOutline, analyzeVerse, generateSlideDescriptions } from './lib/gemini';
-import { auth, db } from './lib/firebase';
+import { auth, db, handleFirestoreError, OperationType } from './lib/firebase';
 import { onAuthStateChanged, signOut, User } from 'firebase/auth';
 import { 
   collection, 
@@ -57,10 +57,14 @@ export default function App() {
       setUser(currentUser);
       if (currentUser) {
         // Fetch profile
-        const userRef = doc(db, 'users', currentUser.uid);
-        const userSnap = await getDoc(userRef);
-        if (userSnap.exists()) {
-          setUserProfile(userSnap.data() as UserProfile);
+        try {
+          const userRef = doc(db, 'users', currentUser.uid);
+          const userSnap = await getDoc(userRef);
+          if (userSnap.exists()) {
+            setUserProfile(userSnap.data() as UserProfile);
+          }
+        } catch (err) {
+          handleFirestoreError(err, OperationType.GET, `users/${currentUser.uid}`);
         }
       } else {
         setUserProfile(null);
@@ -76,8 +80,9 @@ export default function App() {
   useEffect(() => {
     if (!user) return;
 
+    const path = 'sermons';
     const q = query(
-      collection(db, 'sermons'), 
+      collection(db, path), 
       where('userId', '==', user.uid),
       orderBy('updatedAt', 'desc')
     );
@@ -99,6 +104,8 @@ export default function App() {
           setCurrentSermonId(sermonList[0].id);
         }
       }
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, path);
     });
 
     return () => unsubscribe();
@@ -116,6 +123,7 @@ export default function App() {
   const createNewSermon = async () => {
     if (!user) return;
     
+    const path = 'sermons';
     try {
       const newSermon = {
         userId: user.uid,
@@ -125,10 +133,10 @@ export default function App() {
         updatedAt: Date.now(),
       };
       
-      const docRef = await addDoc(collection(db, 'sermons'), newSermon);
+      const docRef = await addDoc(collection(db, path), newSermon);
       setCurrentSermonId(docRef.id);
     } catch (err) {
-      console.error('Failed to create sermon', err);
+      handleFirestoreError(err, OperationType.CREATE, path);
     }
   };
 
@@ -138,6 +146,7 @@ export default function App() {
     const titleMatch = content.match(/<h1>(.*?)<\/h1>/);
     const newTitle = titleMatch ? titleMatch[1].replace(/<[^>]*>/g, '') : 'Sermão sem título';
 
+    const path = `sermons/${currentSermonId}`;
     try {
       const sermonRef = doc(db, 'sermons', currentSermonId);
       await updateDoc(sermonRef, {
@@ -146,20 +155,21 @@ export default function App() {
         updatedAt: Date.now()
       });
     } catch (err) {
-      console.error('Failed to update sermon', err);
+      handleFirestoreError(err, OperationType.UPDATE, path);
     }
   };
 
   const deleteSermon = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
     if (confirm('Tem certeza que deseja excluir este sermão?')) {
+      const path = `sermons/${id}`;
       try {
         await deleteDoc(doc(db, 'sermons', id));
         if (currentSermonId === id) {
           setCurrentSermonId(null);
         }
       } catch (err) {
-        console.error('Failed to delete sermon', err);
+        handleFirestoreError(err, OperationType.DELETE, path);
       }
     }
   };
