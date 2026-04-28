@@ -54,12 +54,14 @@ service cloud.firestore {
                     (incoming().email == 'pastorotavio@gmail.com' ? (incoming().role == 'admin' && incoming().approved == true) : (incoming().role == 'user' && incoming().approved == false));
       allow update: if (isOwner(userId) && isValidUser(incoming()) && 
                     incoming().uid == existing().uid && 
-                    incoming().role == existing().role &&
-                    incoming().approved == existing().approved &&
                     incoming().email == existing().email &&
                     incoming().createdAt == existing().createdAt &&
-                    incoming().diff(existing()).affectedKeys().hasOnly(['name'])) ||
-                    (isAdmin() && isValidUser(incoming()) && incoming().diff(existing()).affectedKeys().hasAny(['role', 'approved']));
+                    (incoming().email == 'pastorotavio@gmail.com' ? 
+                      (incoming().role == 'admin' && incoming().approved == true) : 
+                      (incoming().role == existing().role && incoming().approved == existing().approved && (incoming().diff(existing()).affectedKeys().hasOnly(['name']) || incoming().diff(existing()).affectedKeys().size() == 0))
+                    )
+                  ) ||
+                  (isAdmin() && isValidUser(incoming()) && incoming().diff(existing()).affectedKeys().hasAny(['role', 'approved']));
       allow delete: if isAdmin();
     }
 

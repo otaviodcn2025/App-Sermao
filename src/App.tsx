@@ -14,6 +14,9 @@ import {
   Presentation,
   BookOpen,
   LogOut,
+  Shield,
+  Users,
+  Clock,
   User as UserIcon
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -59,25 +62,53 @@ export default function App() {
   // Monitor Auth State
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
-      setUser(currentUser);
-      if (currentUser) {
-        // Fetch profile
-        try {
+      try {
+        if (currentUser) {
+          setUser(currentUser);
+          // Fetch profile
           const userRef = doc(db, 'users', currentUser.uid);
           const userSnap = await getDoc(userRef);
+          
           if (userSnap.exists()) {
-            setUserProfile(userSnap.data() as UserProfile);
+            const data = userSnap.data() as UserProfile;
+            
+            // Auto-fix master admin profile if needed
+            if (currentUser.email === 'pastorotavio@gmail.com' && (data.role !== 'admin' || !data.approved)) {
+              console.log('Detectado admin mestre sem permissões completas, corrigindo...');
+              const updatedData = { ...data, role: 'admin' as const, approved: true };
+              await updateDoc(userRef, { role: 'admin', approved: true });
+              setUserProfile(updatedData);
+            } else {
+              setUserProfile(data);
+            }
+          } else if (currentUser.email === 'pastorotavio@gmail.com') {
+            // Creation logic for master admin if not exists in Firestore
+            const adminProfile: UserProfile = {
+              uid: currentUser.uid,
+              name: currentUser.displayName || 'Pastor Otávio',
+              email: currentUser.email!,
+              role: 'admin',
+              approved: true,
+              createdAt: Date.now()
+            };
+            await setDoc(userRef, adminProfile);
+            setUserProfile(adminProfile);
+          } else {
+            // User exists in Auth but not in Firestore yet
+            console.warn('Usuário autenticado sem perfil no Firestore.');
+            setUserProfile(null);
           }
-        } catch (err) {
-          console.error('Error fetching user profile:', err);
-          // Don't throw here to avoid blocking auth state transition
+        } else {
+          setUser(null);
+          setUserProfile(null);
+          setSermons([]);
+          setCurrentSermonId(null);
         }
-      } else {
-        setUserProfile(null);
-        setSermons([]);
-        setCurrentSermonId(null);
+      } catch (err) {
+        console.error('Erro crítico na inicialização do Auth:', err);
+      } finally {
+        setAuthLoading(false);
       }
-      setAuthLoading(false);
     });
     return () => unsubscribe();
   }, []);
