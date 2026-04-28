@@ -12,16 +12,38 @@ import {
   ChevronRight,
   FileText,
   Presentation,
-  BookOpen
+  BookOpen,
+  LogOut,
+  User as UserIcon
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import Editor from './components/Editor';
 import BibleSearch from './components/BibleSearch';
-import { Sermon } from './types';
+import Auth from './components/Auth';
+import { Sermon, UserProfile } from './types';
 import { cn, formatDate } from './lib/utils';
 import { generateSermonOutline, analyzeVerse, generateSlideDescriptions } from './lib/gemini';
+import { auth, db } from './lib/firebase';
+import { onAuthStateChanged, signOut, User } from 'firebase/auth';
+import { 
+  collection, 
+  query, 
+  where, 
+  onSnapshot, 
+  addDoc, 
+  updateDoc, 
+  doc, 
+  deleteDoc, 
+  serverTimestamp, 
+  setDoc,
+  getDoc,
+  orderBy
+} from 'firebase/firestore';
 
 export default function App() {
+  const [user, setUser] = useState<User | null>(null);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
   const [sermons, setSermons] = useState<Sermon[]>([]);
   const [currentSermonId, setCurrentSermonId] = useState<string | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
@@ -29,63 +51,122 @@ export default function App() {
   const [isAiLoading, setIsAiLoading] = useState(false);
   const [aiResponse, setAiResponse] = useState<string | null>(null);
 
-  // Load sermons from localStorage on mount
+  // Monitor Auth State
   useEffect(() => {
-    const saved = localStorage.getItem('sermon-craft-sermons');
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        setSermons(parsed);
-        if (parsed.length > 0) {
-          setCurrentSermonId(parsed[0].id);
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+      setUser(currentUser);
+      if (currentUser) {
+        // Fetch profile
+        const userRef = doc(db, 'users', currentUser.uid);
+        const userSnap = await getDoc(userRef);
+        if (userSnap.exists()) {
+          setUserProfile(userSnap.data() as UserProfile);
         }
-      } catch (e) {
-        console.error('Failed to parse sermons', e);
+      } else {
+        setUserProfile(null);
+        setSermons([]);
+        setCurrentSermonId(null);
       }
-    }
+      setAuthLoading(false);
+    });
+    return () => unsubscribe();
   }, []);
 
-  // Save sermons to localStorage whenever they change
+  // Sync Sermons from Firestore
   useEffect(() => {
-    localStorage.setItem('sermon-craft-sermons', JSON.stringify(sermons));
-  }, [sermons]);
+    if (!user) return;
+
+    const q = query(
+      collection(db, 'sermons'), 
+      where('userId', '==', user.uid),
+      orderBy('updatedAt', 'desc')
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const sermonList: Sermon[] = snapshot.docs.map(doc => ({
+        ...doc.data(),
+        id: doc.id
+      } as Sermon));
+      setSermons(sermonList);
+      
+      // Select first sermon if none selected and list not empty
+      if (!currentSermonId && sermonList.length > 0) {
+        // Find if we had one in local memory that still exists
+        const lastSelected = localStorage.getItem(`last-sermon-${user.uid}`);
+        if (lastSelected && sermonList.some(s => s.id === lastSelected)) {
+          setCurrentSermonId(lastSelected);
+        } else {
+          setCurrentSermonId(sermonList[0].id);
+        }
+      }
+    });
+
+    return () => unsubscribe();
+  }, [user, currentSermonId]);
+
+  // Keep track of last selected sermon per user
+  useEffect(() => {
+    if (user && currentSermonId) {
+      localStorage.setItem(`last-sermon-${user.uid}`, currentSermonId);
+    }
+  }, [user, currentSermonId]);
 
   const currentSermon = sermons.find(s => s.id === currentSermonId);
 
-  const createNewSermon = () => {
-    const newSermon: Sermon = {
-      id: crypto.randomUUID(),
-      title: 'Novo Sermão',
-      content: '<h1>Título do Sermão</h1><p>Comece aqui seu rascunho ou use o botão <strong>Gerar Esboço com IA</strong> acima para estruturar sua mensagem.</p>',
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-    };
-    setSermons([newSermon, ...sermons]);
-    setCurrentSermonId(newSermon.id);
+  const createNewSermon = async () => {
+    if (!user) return;
+    
+    try {
+      const newSermon = {
+        userId: user.uid,
+        title: 'Novo Sermão',
+        content: '<h1>Título do Sermão</h1><p>Comece aqui seu rascunho ou use o botão <strong>Gerar Esboço com IA</strong> acima para estruturar sua mensagem.</p>',
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      };
+      
+      const docRef = await addDoc(collection(db, 'sermons'), newSermon);
+      setCurrentSermonId(docRef.id);
+    } catch (err) {
+      console.error('Failed to create sermon', err);
+    }
   };
 
-  const updateSermon = (content: string) => {
-    if (!currentSermonId) return;
+  const updateSermon = async (content: string) => {
+    if (!currentSermonId || !user) return;
     
-    // Extract title from content if possible
     const titleMatch = content.match(/<h1>(.*?)<\/h1>/);
     const newTitle = titleMatch ? titleMatch[1].replace(/<[^>]*>/g, '') : 'Sermão sem título';
 
-    setSermons(prev => prev.map(s => 
-      s.id === currentSermonId 
-        ? { ...s, content, title: newTitle, updatedAt: Date.now() } 
-        : s
-    ));
+    try {
+      const sermonRef = doc(db, 'sermons', currentSermonId);
+      await updateDoc(sermonRef, {
+        content,
+        title: newTitle,
+        updatedAt: Date.now()
+      });
+    } catch (err) {
+      console.error('Failed to update sermon', err);
+    }
   };
 
-  const deleteSermon = (e: React.MouseEvent, id: string) => {
+  const deleteSermon = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
     if (confirm('Tem certeza que deseja excluir este sermão?')) {
-      const filtered = sermons.filter(s => s.id !== id);
-      setSermons(filtered);
-      if (currentSermonId === id) {
-        setCurrentSermonId(filtered.length > 0 ? filtered[0].id : null);
+      try {
+        await deleteDoc(doc(db, 'sermons', id));
+        if (currentSermonId === id) {
+          setCurrentSermonId(null);
+        }
+      } catch (err) {
+        console.error('Failed to delete sermon', err);
       }
+    }
+  };
+
+  const handleLogout = async () => {
+    if (confirm('Deseja realmente sair?')) {
+      await signOut(auth);
     }
   };
 
@@ -137,6 +218,18 @@ export default function App() {
     }
   };
 
+  if (authLoading) {
+    return (
+      <div className="h-screen flex items-center justify-center bg-slate-50">
+        <Loader2 className="animate-spin text-orange-600" size={40} />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <Auth />;
+  }
+
   return (
     <div className="flex h-screen bg-slate-50 overflow-hidden font-sans">
       {/* List Sidebar */}
@@ -152,6 +245,24 @@ export default function App() {
             </div>
             <h1 className="font-bold text-slate-800 tracking-tight">SermonCraft</h1>
           </div>
+        </div>
+
+        {/* User Profile Summary */}
+        <div className="px-4 py-3 mx-2 mt-2 bg-slate-50 rounded-xl flex items-center gap-3 border border-slate-100">
+          <div className="w-9 h-9 bg-orange-100 rounded-lg flex items-center justify-center text-orange-700">
+            <UserIcon size={18} />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-bold text-slate-800 truncate">{userProfile?.name || user.displayName || 'Usuário'}</p>
+            <p className="text-[10px] text-slate-500 truncate">{user.email}</p>
+          </div>
+          <button 
+            onClick={handleLogout}
+            className="p-1.5 hover:bg-slate-200 rounded-md text-slate-400 hover:text-slate-600 transition-all"
+            title="Sair"
+          >
+            <LogOut size={14} />
+          </button>
         </div>
 
         <div className="p-4">
@@ -236,7 +347,7 @@ export default function App() {
              )}
              <div className="flex items-center gap-1.5 text-[10px] text-slate-400 font-bold uppercase tracking-tighter bg-slate-50 px-2 py-1 rounded border border-slate-100">
                <Save size={10} />
-               Salvo Localmente
+               Sincronizado na Nuvem
              </div>
              <button 
               onClick={() => setIsBibleSearchOpen(!isBibleSearchOpen)}

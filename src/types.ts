@@ -1,5 +1,13 @@
+export interface UserProfile {
+  uid: string;
+  name: string;
+  email: string;
+  createdAt: number;
+}
+
 export interface Sermon {
   id: string;
+  userId: string;
   title: string;
   content: string; // JSON or HTML from TipTap
   createdAt: number;

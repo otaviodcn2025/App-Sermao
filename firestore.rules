@@ -1,0 +1,80 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // Users Collection
+    match /users/{userId} {
+      function isValidUser(data) {
+        return data.keys().hasAll(['uid', 'name', 'email', 'createdAt']) &&
+               data.keys().size() == 4 &&
+               data.uid == request.auth.uid &&
+               data.name is string && data.name.size() > 0 && data.name.size() <= 100 &&
+               data.email is string && data.email.size() <= 255 &&
+               data.createdAt is number;
+      }
+
+      allow get: if isOwner(userId);
+      allow create: if isOwner(userId) && isValidUser(incoming()) && incoming().createdAt == request.time.toMillis();
+      allow update: if isOwner(userId) && isValidUser(incoming()) && 
+                    incoming().uid == existing().uid && 
+                    incoming().createdAt == existing().createdAt &&
+                    incoming().diff(existing()).affectedKeys().hasOnly(['name']);
+    }
+
+    // Sermons Collection
+    match /sermons/{sermonId} {
+      function isValidSermon(data) {
+        return data.keys().hasAll(['id', 'userId', 'title', 'content', 'createdAt', 'updatedAt']) &&
+               data.keys().size() == 6 &&
+               data.id == sermonId &&
+               data.userId == request.auth.uid &&
+               data.title is string && data.title.size() <= 255 &&
+               data.content is string && data.content.size() <= 1048576 && // 1MB limit check
+               data.createdAt is number &&
+               data.updatedAt is number;
+      }
+
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow get: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn() && 
+                    isValidSermon(incoming()) && 
+                    isValidId(sermonId) &&
+                    incoming().createdAt == request.time.toMillis() &&
+                    incoming().updatedAt == request.time.toMillis();
+      allow update: if isSignedIn() && 
+                    resource.data.userId == request.auth.uid &&
+                    isValidSermon(incoming()) &&
+                    incoming().userId == existing().userId &&
+                    incoming().id == existing().id &&
+                    incoming().createdAt == existing().createdAt &&
+                    incoming().updatedAt == request.time.toMillis() &&
+                    incoming().diff(existing()).affectedKeys().hasAny(['title', 'content', 'updatedAt']);
+      allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+    }
+  }
+}
