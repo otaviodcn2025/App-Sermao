@@ -45,9 +45,11 @@ interface EditorProps {
   content: string;
   onChange: (content: string) => void;
   onAiAction: (action: string, selectedText: string) => void;
+  title: string;
+  onTitleChange: (title: string) => void;
 }
 
-export default function Editor({ content, onChange, onAiAction }: EditorProps) {
+export default function Editor({ content, onChange, onAiAction, title, onTitleChange }: EditorProps) {
   const editor = useEditor({
     extensions: [
       StarterKit,
@@ -81,7 +83,7 @@ export default function Editor({ content, onChange, onAiAction }: EditorProps) {
     },
     editorProps: {
       attributes: {
-        class: 'prose prose-slate max-w-none focus:outline-none min-h-[70vh] px-8 py-12 bg-white selection:bg-orange-100',
+        class: 'prose prose-slate max-w-none focus:outline-none min-h-[70vh] px-8 pb-12 bg-white selection:bg-orange-100',
       },
     },
   });
@@ -289,6 +291,16 @@ export default function Editor({ content, onChange, onAiAction }: EditorProps) {
       </div>
 
       <div className="flex-1 overflow-y-auto">
+        <div className="px-8 pt-12">
+          <input 
+            type="text"
+            value={title}
+            onChange={(e) => onTitleChange(e.target.value)}
+            placeholder="Título do Sermão"
+            className="w-full text-4xl font-black text-slate-900 border-none focus:ring-0 placeholder:text-slate-200 bg-transparent mb-2"
+          />
+          <div className="w-20 h-1.5 bg-orange-500 rounded-full mb-8" />
+        </div>
         <EditorContent editor={editor} />
       </div>
 

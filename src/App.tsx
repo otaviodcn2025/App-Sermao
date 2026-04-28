@@ -17,7 +17,10 @@ import {
   Shield,
   Users,
   Clock,
-  User as UserIcon
+  User as UserIcon,
+  X,
+  List,
+  Book
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import Editor from './components/Editor';
@@ -58,18 +61,38 @@ export default function App() {
   const [isBibleSearchOpen, setIsBibleSearchOpen] = useState(window.innerWidth > 1024);
   const [isAiLoading, setIsAiLoading] = useState(false);
   const [aiResponse, setAiResponse] = useState<string | null>(null);
+  const [mobileTab, setMobileTab] = useState<'list' | 'editor' | 'bible'>('editor');
 
   // Monitor screen size
   useEffect(() => {
     const handleResize = () => {
-      if (window.innerWidth < 768) {
+      if (window.innerWidth < 1024) {
         setIsSidebarOpen(false);
         setIsBibleSearchOpen(false);
+      } else {
+        setIsSidebarOpen(true);
+        setIsBibleSearchOpen(true);
       }
     };
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  // Update sidebars based on mobile tabs
+  useEffect(() => {
+    if (window.innerWidth < 1024) {
+      if (mobileTab === 'list') {
+        setIsSidebarOpen(true);
+        setIsBibleSearchOpen(false);
+      } else if (mobileTab === 'bible') {
+        setIsSidebarOpen(false);
+        setIsBibleSearchOpen(true);
+      } else {
+        setIsSidebarOpen(false);
+        setIsBibleSearchOpen(false);
+      }
+    }
+  }, [mobileTab]);
 
   // Monitor Auth State
   useEffect(() => {
@@ -193,18 +216,14 @@ export default function App() {
     }
   };
 
-  const updateSermon = async (content: string) => {
+  const updateSermon = async (updates: Partial<Sermon>) => {
     if (!currentSermonId || !user) return;
     
-    const titleMatch = content.match(/<h1>(.*?)<\/h1>/);
-    const newTitle = titleMatch ? titleMatch[1].replace(/<[^>]*>/g, '') : 'Sermão sem título';
-
     const path = `sermons/${currentSermonId}`;
     try {
       const sermonRef = doc(db, 'sermons', currentSermonId);
       await updateDoc(sermonRef, {
-        content,
-        title: newTitle,
+        ...updates,
         updatedAt: Date.now()
       });
     } catch (err) {
@@ -258,7 +277,7 @@ export default function App() {
   const addVerseToEditor = (verseText: string, reference: string) => {
     if (currentSermon) {
       const newContent = currentSermon.content + `<blockquote><p>${verseText}</p><cite>— ${reference}</cite></blockquote><p></p>`;
-      updateSermon(newContent);
+      updateSermon({ content: newContent });
     }
   };
 
@@ -342,7 +361,7 @@ export default function App() {
         )}
       </AnimatePresence>
 
-      <div className="flex h-screen bg-slate-50 overflow-hidden font-sans relative">
+      <div className="flex h-screen bg-slate-50 overflow-hidden font-sans relative pb-16 lg:pb-0">
       {/* Overlay for mobile sidebars */}
       <AnimatePresence>
         {(isSidebarOpen || isBibleSearchOpen) && window.innerWidth < 1024 && (
@@ -351,6 +370,7 @@ export default function App() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={() => {
+              setMobileTab('editor');
               setIsSidebarOpen(false);
               setIsBibleSearchOpen(false);
             }}
@@ -363,22 +383,29 @@ export default function App() {
       <motion.aside 
         initial={false}
         animate={{ 
-          width: isSidebarOpen ? 280 : 0, 
+          width: isSidebarOpen ? (window.innerWidth < 1024 ? '85%' : 280) : 0, 
           opacity: isSidebarOpen ? 1 : 0,
-          x: isSidebarOpen ? 0 : -280
+          x: isSidebarOpen ? 0 : -320
         }}
+        transition={{ type: "spring", damping: 25, stiffness: 200 }}
         className={cn(
-          "flex flex-col bg-white border-r border-slate-200 shrink-0 relative overflow-hidden z-50",
+          "flex flex-col bg-white border-r border-slate-200 shrink-0 relative overflow-hidden z-[60]",
           "fixed inset-y-0 left-0 lg:relative lg:translate-x-0"
         )}
       >
-        <div className="p-6 border-bottom border-slate-100 flex items-center justify-between">
+        <div className="p-6 border-b border-slate-100 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 bg-orange-600 rounded-lg flex items-center justify-center">
               <Sparkles size={18} className="text-white" />
             </div>
             <h1 className="font-bold text-slate-800 tracking-tight">ConectaSermon</h1>
           </div>
+          <button 
+            onClick={() => setMobileTab('editor')}
+            className="lg:hidden p-2 text-slate-400 hover:bg-slate-50 rounded-lg"
+          >
+            <X size={20} />
+          </button>
         </div>
 
         {/* User Profile Summary */}
@@ -421,32 +448,39 @@ export default function App() {
         <div className="p-4">
           <button 
             onClick={createNewSermon}
-            className="w-full flex items-center justify-center gap-2 bg-slate-900 text-white py-2.5 rounded-lg text-sm font-medium hover:bg-slate-800 transition-all shadow-sm group"
+            className="w-full flex items-center justify-center gap-2 bg-slate-900 text-white py-3 rounded-xl text-sm font-bold hover:bg-slate-800 transition-all shadow-sm group"
           >
-            <Plus size={16} className="group-hover:rotate-90 transition-transform duration-300" />
-            Novo Sermão
+            <Plus size={18} className="group-hover:rotate-90 transition-transform duration-300" />
+            Novo Esboço
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-2 space-y-1">
+        <div className="flex-1 overflow-y-auto px-2 space-y-1 pb-20 lg:pb-0">
+          <div className="px-4 py-2">
+            <h2 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-2">Meus Esboços</h2>
+          </div>
           {sermons.length === 0 ? (
             <div className="text-center py-12 px-6">
               <FileText size={40} className="text-slate-200 mx-auto mb-3" />
-              <p className="text-sm text-slate-400">Nenhum sermão salvo ainda.</p>
+              <p className="text-sm text-slate-400">Nenhum esboço salvo ainda.</p>
             </div>
           ) : (
             sermons.map(s => (
               <div
                 key={s.id}
-                onClick={() => setCurrentSermonId(s.id)}
+                onClick={() => {
+                  setCurrentSermonId(s.id);
+                  setMobileTab('editor');
+                  if(window.innerWidth < 1024) setIsSidebarOpen(false);
+                }}
                 className={cn(
                   "w-full text-left p-3 rounded-lg transition-all group relative cursor-pointer",
-                  currentSermonId === s.id ? "bg-orange-50 text-orange-900" : "hover:bg-slate-100 text-slate-700"
+                  currentSermonId === s.id ? "bg-orange-50 text-orange-900 border-l-4 border-orange-500" : "hover:bg-slate-100 text-slate-700"
                 )}
               >
-                <div className="text-sm font-bold truncate pr-6 group-hover:text-orange-600 transition-colors">{s.title || 'Sermão sem título'}</div>
+                <div className="text-sm font-bold truncate pr-6 group-hover:text-orange-600 transition-colors uppercase tracking-tight">{s.title || 'Esboço sem título'}</div>
                 <div className="flex items-center gap-1.5 text-[9px] text-slate-400 mt-1.5 uppercase font-black tracking-widest">
-                  <History size={10} />
+                  <Clock size={10} />
                   {formatDate(s.updatedAt)}
                 </div>
                 <button 
@@ -464,15 +498,15 @@ export default function App() {
       {/* Main Content Area */}
       <main className="flex-1 flex flex-col min-w-0 bg-white relative">
         {/* Top Navbar */}
-        <header className="h-14 border-bottom border-slate-100 flex items-center justify-between px-6 bg-white/80 backdrop-blur-md sticky top-0 z-20">
-          <div className="flex items-center gap-4">
+        <header className="h-16 lg:h-14 border-b border-slate-100 flex items-center justify-between px-4 lg:px-6 bg-white/80 backdrop-blur-md sticky top-0 z-20">
+          <div className="flex items-center gap-2 lg:gap-4">
             <button 
               onClick={() => setIsSidebarOpen(!isSidebarOpen)} 
-              className="p-2 hover:bg-slate-100 rounded-lg text-slate-500 transition-colors"
+              className="p-2 hover:bg-slate-100 rounded-xl text-slate-500 transition-colors lg:hidden"
             >
-              <Layout size={20} />
+              <Users size={20} />
             </button>
-            <div className="w-px h-4 bg-slate-200" />
+            <div className="hidden lg:block w-px h-4 bg-slate-200" />
             <div className="flex items-center gap-2">
               <button 
                 onClick={handleGenerateOutlineFromTheme}
@@ -493,14 +527,14 @@ export default function App() {
 
           <div className="flex items-center gap-2 md:gap-4">
              {isAiLoading && (
-               <div className="hidden sm:flex items-center gap-2 text-xs text-slate-500 font-medium bg-slate-50 px-3 py-1 rounded-full border border-slate-100">
-                 <Loader2 size={12} className="animate-spin text-orange-500" />
-                 Pensando...
+               <div className="flex items-center gap-2 text-xs text-orange-500 font-bold bg-orange-50 px-3 py-1 rounded-full border border-orange-100">
+                 <Loader2 size={12} className="animate-spin" />
+                 <span className="hidden sm:inline">IA pensando...</span>
                </div>
              )}
              <button 
                 onClick={() => setIsPresenting(true)}
-                className="flex items-center gap-1.5 text-xs font-bold text-orange-600 bg-orange-50 p-2 md:px-3 md:py-1.5 rounded-lg border border-orange-100 hover:bg-orange-100 transition-colors"
+                className="flex items-center gap-1.5 text-xs font-bold text-orange-600 bg-orange-50 p-2 lg:px-3 lg:py-1.5 rounded-lg border border-orange-100 hover:bg-orange-100 transition-colors"
                 title="Modo Apresentação"
               >
                 <Presentation size={16} />
@@ -513,24 +547,32 @@ export default function App() {
              <button 
               onClick={() => setIsBibleSearchOpen(!isBibleSearchOpen)}
               className={cn(
-                "flex items-center gap-2 p-2 md:px-4 md:py-1.5 rounded-lg md:rounded-full text-xs font-semibold transition-all",
+                "hidden lg:flex items-center gap-2 p-2 lg:px-4 lg:py-1.5 rounded-lg lg:rounded-full text-xs font-semibold transition-all",
                 isBibleSearchOpen ? "bg-slate-900 text-white shadow-md shadow-slate-200" : "bg-slate-100 text-slate-600 border border-slate-200 hover:bg-slate-200"
               )}
             >
               <BookOpen size={16} />
               <span className="hidden md:inline">Bíblia</span>
             </button>
+            <button 
+              onClick={() => setIsAdminPanelOpen(true)}
+              className="lg:hidden p-2 text-slate-500 hover:bg-slate-100 rounded-xl"
+            >
+              <Shield size={20} />
+            </button>
           </div>
         </header>
 
         {/* Editor Body */}
-        <div className="flex-1 overflow-y-auto px-4 py-8 md:px-12">
-          <div className="max-w-4xl mx-auto">
+        <div className="flex-1 overflow-y-auto px-4 py-6 md:px-12">
+          <div className="max-w-4xl mx-auto pb-12">
             {currentSermon ? (
               <Editor 
                 content={currentSermon.content} 
-                onChange={updateSermon} 
+                onChange={(content) => updateSermon({ content })} 
                 onAiAction={handleAiAction}
+                onTitleChange={(title) => updateSermon({ title })}
+                title={currentSermon.title}
               />
             ) : currentSermonId ? (
               <div className="h-[70vh] flex items-center justify-center">
@@ -538,23 +580,50 @@ export default function App() {
               </div>
             ) : (
               <div className="h-[70vh] flex flex-col items-center justify-center text-slate-400 space-y-4">
-                <div className="bg-slate-50 w-20 h-20 rounded-3xl flex items-center justify-center shadow-inner">
-                  <FileText size={32} className="text-slate-300" />
+                <div className="bg-slate-50 w-24 h-24 rounded-[40px] flex items-center justify-center shadow-inner">
+                  <BookOpen size={40} className="text-slate-200" />
                 </div>
-                <div className="text-center">
-                  <p className="text-sm font-medium">Selecione um sermão para editar</p>
-                  <p className="text-xs">Ou clique no botão "+" para criar um novo.</p>
+                <div className="text-center px-6">
+                  <p className="text-lg font-bold text-slate-800">Pronto para pregar?</p>
+                  <p className="text-sm">Selecione um esboço ou crie um novo para começar.</p>
                 </div>
                 <button 
                   onClick={createNewSermon}
-                  className="mt-4 px-6 py-2 bg-slate-900 text-white text-sm font-semibold rounded-xl hover:bg-slate-800 transition-all shadow-lg shadow-slate-100 active:scale-95"
+                  className="mt-4 px-8 py-3 bg-slate-900 text-white text-sm font-bold rounded-2xl hover:bg-slate-800 transition-all shadow-xl active:scale-95"
                 >
-                  Começar Agora
+                  Criar Novo Esboço
                 </button>
               </div>
             )}
           </div>
         </div>
+
+        {/* Floating Action Buttons for Mobile AI */}
+        <AnimatePresence>
+          {currentSermon && mobileTab === 'editor' && !isAiLoading && (
+            <motion.div 
+              initial={{ scale: 0, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0, opacity: 0 }}
+              className="fixed bottom-20 right-4 flex flex-col gap-3 lg:hidden z-30"
+            >
+               <button 
+                onClick={handleGenerateOutlineFromTheme}
+                className="w-12 h-12 bg-orange-600 text-white rounded-2xl shadow-xl flex items-center justify-center border-4 border-white active:scale-90 transition-transform"
+                title="Esboço IA"
+              >
+                <Sparkles size={22} />
+              </button>
+              <button 
+                onClick={() => handleAiAction('slides', '')}
+                className="w-12 h-12 bg-slate-900 text-white rounded-2xl shadow-xl flex items-center justify-center border-4 border-white active:scale-90 transition-transform"
+                title="Gerar Slides"
+              >
+                <Presentation size={22} />
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* AI Response Panel (Slide-up) */}
         <AnimatePresence>
@@ -584,7 +653,7 @@ export default function App() {
                  <button 
                   onClick={() => {
                     const newContent = (currentSermon?.content || '') + `<hr/><div class="ai-suggestion">${aiResponse.replace(/\n/g, '<br/>')}</div>`;
-                    updateSermon(newContent);
+                    updateSermon({ content: newContent });
                     setAiResponse(null);
                   }}
                   className="bg-orange-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-orange-700 transition-colors shadow-sm"
@@ -601,18 +670,63 @@ export default function App() {
       <motion.aside 
         initial={false}
         animate={{ 
-          width: isBibleSearchOpen ? 320 : 0, 
+          width: isBibleSearchOpen ? (window.innerWidth < 1024 ? '100%' : 320) : 0, 
           opacity: isBibleSearchOpen ? 1 : 0,
           x: isBibleSearchOpen ? 0 : 320
         }}
+        transition={{ type: "spring", damping: 25, stiffness: 200 }}
         className={cn(
-          "flex bg-white overflow-hidden z-50 border-l border-slate-200",
+          "flex flex-col bg-white overflow-hidden z-[70] border-l border-slate-200",
           "fixed inset-y-0 right-0 lg:relative lg:translate-x-0"
         )}
       >
-        <BibleSearch onAddVerse={addVerseToEditor} />
+        <div className="flex-1 flex flex-col">
+          <div className="p-4 lg:hidden border-b border-slate-100 flex items-center justify-between bg-white sticky top-0 z-10">
+            <h3 className="font-bold text-slate-800">Bíblia Sagrada</h3>
+            <button onClick={() => setMobileTab('editor')} className="p-2 text-slate-400">
+               <X size={20} />
+            </button>
+          </div>
+          <BibleSearch onAddVerse={addVerseToEditor} />
+        </div>
       </motion.aside>
-    </div>
+
+      {/* Bottom Navigation for Mobile */}
+      <nav className="fixed bottom-0 left-0 right-0 h-16 bg-white/95 backdrop-blur-md border-t border-slate-200 flex items-center justify-around z-[100] lg:hidden px-2 pb-safe">
+        <button 
+          onClick={() => setMobileTab('list')}
+          className={cn(
+            "flex flex-col items-center gap-1 flex-1 py-1 transition-all rounded-xl",
+             mobileTab === 'list' ? "text-orange-600 scale-110" : "text-slate-400"
+          )}
+        >
+          <List size={22} />
+          <span className="text-[10px] font-bold uppercase tracking-wider">Esboços</span>
+        </button>
+        <div className="w-px h-8 bg-slate-100" />
+        <button 
+          onClick={() => setMobileTab('editor')}
+          className={cn(
+            "flex flex-col items-center gap-1 flex-1 py-1 transition-all rounded-xl",
+             mobileTab === 'editor' ? "text-orange-600 scale-110" : "text-slate-400"
+          )}
+        >
+          <BookOpen size={22} />
+          <span className="text-[10px] font-bold uppercase tracking-wider">Editor</span>
+        </button>
+        <div className="w-px h-8 bg-slate-100" />
+        <button 
+          onClick={() => setMobileTab('bible')}
+          className={cn(
+            "flex flex-col items-center gap-1 flex-1 py-1 transition-all rounded-xl",
+             mobileTab === 'bible' ? "text-orange-600 scale-110" : "text-slate-400"
+          )}
+        >
+          <Book size={22} />
+          <span className="text-[10px] font-bold uppercase tracking-wider">Bíblia</span>
+        </button>
+      </nav>
+      </div>
     </>
   );
 }
