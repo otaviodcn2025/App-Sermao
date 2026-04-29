@@ -4,7 +4,13 @@ let aiClient: GoogleGenAI | null = null;
 
 function getAIClient() {
   if (!aiClient) {
-    const apiKey = typeof process !== 'undefined' ? (process.env.Gemini_API_Key1 || process.env.GEMINI_API_KEY) : null;
+    let apiKey = '';
+    try {
+      apiKey = (process.env.Gemini_API_Key1 as string) || (process.env.GEMINI_API_KEY as string) || '';
+    } catch (e) {
+      // process might not be defined
+    }
+    
     if (!apiKey) {
       console.warn("API Key não configurada. A IA não funcionará até que a chave seja adicionada.");
       return null;

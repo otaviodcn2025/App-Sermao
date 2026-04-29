@@ -105,6 +105,10 @@ export default function App() {
 
   // Monitor Auth State
   useEffect(() => {
+    if (!auth || !db) {
+      setAuthLoading(false);
+      return;
+    }
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       try {
         if (currentUser) {
@@ -159,7 +163,7 @@ export default function App() {
 
   // Sync Sermons from Firestore
   useEffect(() => {
-    if (!user) return;
+    if (!user || !db) return;
 
     const path = 'sermons';
     const q = query(
@@ -178,7 +182,13 @@ export default function App() {
       // Select first sermon if none selected and list not empty
       if (!currentSermonId && sermonList.length > 0) {
         // Find if we had one in local memory that still exists
-        const lastSelected = localStorage.getItem(`last-sermon-${user.uid}`);
+        let lastSelected = null;
+        try {
+          lastSelected = localStorage.getItem(`last-sermon-${user.uid}`);
+        } catch (e) {
+          console.warn("LocalStorage indisponível");
+        }
+        
         if (lastSelected && sermonList.some(s => s.id === lastSelected)) {
           setCurrentSermonId(lastSelected);
         } else {
@@ -195,14 +205,18 @@ export default function App() {
   // Keep track of last selected sermon per user
   useEffect(() => {
     if (user && currentSermonId) {
-      localStorage.setItem(`last-sermon-${user.uid}`, currentSermonId);
+      try {
+        localStorage.setItem(`last-sermon-${user.uid}`, currentSermonId);
+      } catch (e) {
+        // ignore storage errors
+      }
     }
   }, [user, currentSermonId]);
 
   const currentSermon = sermons.find(s => s.id === currentSermonId);
 
   const createNewSermon = async () => {
-    if (!user) return;
+    if (!user || !db) return;
     
     const collectionRef = collection(db, 'sermons');
     const newDocRef = doc(collectionRef); // Generate ID on client
@@ -226,7 +240,7 @@ export default function App() {
   };
 
   const updateSermon = async (updates: Partial<Sermon>) => {
-    if (!currentSermonId || !user) return;
+    if (!currentSermonId || !user || !db) return;
     
     const path = `sermons/${currentSermonId}`;
     try {
@@ -242,6 +256,7 @@ export default function App() {
 
   const deleteSermon = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
+    if (!db) return;
     if (confirm('Tem certeza que deseja excluir este sermão?')) {
       const path = `sermons/${id}`;
       try {

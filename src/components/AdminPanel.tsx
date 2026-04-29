@@ -35,6 +35,10 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
   const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
+    if (!db) {
+      setLoading(false);
+      return;
+    }
     const q = query(collection(db, 'users'), orderBy('createdAt', 'desc'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const userList = snapshot.docs.map(doc => doc.data() as UserProfile);

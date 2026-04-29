@@ -15,8 +15,8 @@ try {
   console.error("Erro ao inicializar Firebase:", error);
 }
 
-export const db = app ? getFirestore(app, firebaseConfig.firestoreDatabaseId) : null as any;
-export const auth = app ? getAuth(app) : null as any;
+export const db = app ? getFirestore(app, firebaseConfig.firestoreDatabaseId) : null;
+export const auth = app ? getAuth(app) : null;
 
 export enum OperationType {
   CREATE = 'create',
