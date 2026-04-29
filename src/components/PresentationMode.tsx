@@ -57,23 +57,23 @@ export default function PresentationMode({ sermon, onClose }: PresentationModePr
 
   return (
     <motion.div 
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="fixed inset-0 bg-white z-50 flex flex-col font-sans"
+      initial={{ opacity: 0, y: 30 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: 30 }}
+      className="fixed inset-0 bg-white z-[200] flex flex-col font-sans"
     >
       {/* Header / Controls */}
-      <div className="min-h-20 border-b border-slate-100 flex flex-col md:flex-row items-center justify-between px-4 md:px-8 py-3 md:py-0 bg-slate-50/50 backdrop-blur-sm sticky top-0 z-10 gap-3">
-        <div className="flex items-center gap-3 w-full md:w-auto">
+      <div className="min-h-24 border-b border-slate-100 flex flex-col md:flex-row items-center justify-between px-6 md:px-12 py-3 md:py-0 bg-white/95 backdrop-blur-md sticky top-0 z-10 gap-4 shadow-sm">
+        <div className="flex items-center gap-4 w-full md:w-auto">
           <button 
             onClick={onClose}
-            className="p-2 hover:bg-slate-200 rounded-xl text-slate-500 transition-colors bg-white border border-slate-200 shadow-sm"
+            className="p-3 hover:bg-slate-100 rounded-2xl text-slate-500 transition-colors bg-slate-50 border border-slate-200 shadow-sm active:scale-95 transition-transform"
           >
-            <X size={20} />
+            <X size={24} />
           </button>
           <div className="min-w-0">
-            <h2 className="text-sm font-bold text-slate-800 line-clamp-1">{sermon.title}</h2>
-            <p className="text-[10px] text-slate-500 font-medium uppercase tracking-widest">Modo de Apresentação</p>
+            <h2 className="text-base font-black text-slate-900 line-clamp-1 uppercase tracking-tight">{sermon.title}</h2>
+            <p className="text-[10px] text-orange-600 font-black uppercase tracking-[0.2em]">Modo Apresentação</p>
           </div>
         </div>
 
@@ -131,7 +131,7 @@ export default function PresentationMode({ sermon, onClose }: PresentationModePr
       </div>
 
       {/* Content Area */}
-      <div className="flex-1 overflow-y-auto px-6 py-6 md:py-12 scroll-smooth bg-white">
+      <div className="flex-1 overflow-y-auto px-8 md:px-24 py-12 md:py-20 scroll-smooth bg-white">
         <div 
           className="max-w-4xl mx-auto prose prose-slate prose-orange presentation-content"
           style={{ 

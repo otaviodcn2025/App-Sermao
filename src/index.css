@@ -18,7 +18,12 @@
     user-select: text;
   }
 
-  /* Fix for presentation mode prose font overrides */
+  .presentation-content {
+    margin-left: auto !important;
+    margin-right: auto !important;
+    width: 100% !important;
+  }
+
   .presentation-content p, 
   .presentation-content li, 
   .presentation-content blockquote p,
