@@ -24,7 +24,7 @@ const SYSTEM_INSTRUCTION = `Você é um assistente de redação homilética alta
 Sua função é ajudar pastores e líderes religiosos a estruturar sermões baseados em princípios sólidos de exegese bíblica e aplicação prática, mantendo total fidelidade ao texto bíblico.
 Responda sempre em Português (Brasil) de forma clara e inspiradora.`;
 
-const DEFAULT_MODEL = "gemini-1.5-flash"; // Updated to a more standard model name
+const DEFAULT_MODEL = "gemini-3-flash-preview"; 
 
 export async function generateSermonOutline(topic: string, baseText?: string) {
   try {
@@ -68,6 +68,7 @@ export async function analyzeVerse(reference: string, textRef: string) {
   try {
     const ai = getAIClient();
     if (!ai) throw new Error("IA não disponível.");
+
     const prompt = `Analise profundamente o versículo ou passagem ${reference}: "${textRef}".
     Forneça contexto histórico, análise linguística (grego/hebraico), comentário teológico e sugestão de aplicação/ilustração.`;
 
@@ -96,6 +97,7 @@ export async function generateSlideDescriptions(sermonContent: string) {
   try {
     const ai = getAIClient();
     if (!ai) throw new Error("IA não disponível.");
+
     const prompt = `Com base no sermão abaixo, crie um plano de 6-8 slides. Para cada slide forneça: Título, Texto Principal e Descrição Visual para imagem.
     
     Sermão:

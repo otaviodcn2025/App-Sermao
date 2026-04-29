@@ -57,11 +57,19 @@ export default function App() {
   const [isAdminPanelOpen, setIsAdminPanelOpen] = useState(false);
   const [sermons, setSermons] = useState<Sermon[]>([]);
   const [currentSermonId, setCurrentSermonId] = useState<string | null>(null);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(() => typeof window !== 'undefined' ? window.innerWidth >= 1024 : false);
-  const [isBibleSearchOpen, setIsBibleSearchOpen] = useState(false); // Bible starts closed for better focus, even on desktop
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false); // Start false
+  const [isBibleSearchOpen, setIsBibleSearchOpen] = useState(false); 
   const [isAiLoading, setIsAiLoading] = useState(false);
   const [aiResponse, setAiResponse] = useState<string | null>(null);
   const [mobileTab, setMobileTab] = useState<'list' | 'editor' | 'bible'>('editor');
+
+  // Initialize responsive state
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setIsSidebarOpen(window.innerWidth >= 1024);
+      // setIsBibleSearchOpen(window.innerWidth >= 1024);
+    }
+  }, []);
 
   // Monitor screen size
   useEffect(() => {

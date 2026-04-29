@@ -1,6 +1,7 @@
 import {StrictMode} from 'react';
 import {createRoot} from 'react-dom/client';
 import App from './App.tsx';
+import ErrorBoundary from './components/ErrorBoundary';
 import './index.css';
 
 console.log("Iniciando aplicação Sermão Digital...");
@@ -12,7 +13,9 @@ if (container) {
     const root = createRoot(container);
     root.render(
       <StrictMode>
-        <App />
+        <ErrorBoundary>
+          <App />
+        </ErrorBoundary>
       </StrictMode>,
     );
   } catch (err) {

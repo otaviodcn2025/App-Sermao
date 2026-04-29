@@ -11,6 +11,14 @@
     <script>
       window.onerror = function(msg, url, lineNo, columnNo, error) {
         console.error('Erro na aplicação:', msg, url, lineNo, columnNo, error);
+        var root = document.getElementById('root');
+        if (root && root.innerHTML === '') {
+          root.innerHTML = '<div style="padding: 40px; text-align: center; font-family: sans-serif; color: #334155;">' +
+            '<h1 style="color: #ef4444; margin-bottom: 16px;">Ocorreu um erro ao carregar</h1>' +
+            '<p style="font-size: 14px; margin-bottom: 24px;">' + msg + '</p>' +
+            '<button onclick="window.location.reload()" style="background: #0f172a; color: white; border: none; padding: 12px 24px; border-radius: 12px; font-weight: bold; cursor: pointer;">Recarregar Página</button>' +
+            '</div>';
+        }
         return false;
       };
     </script>
