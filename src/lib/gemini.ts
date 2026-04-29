@@ -4,9 +4,10 @@ let aiClient: GoogleGenAI | null = null;
 
 function getAIClient() {
   if (!aiClient) {
-    const apiKey = process.env.Gemini_API_Key1 || process.env.GEMINI_API_KEY;
+    const apiKey = typeof process !== 'undefined' ? (process.env.Gemini_API_Key1 || process.env.GEMINI_API_KEY) : null;
     if (!apiKey) {
-      throw new Error("API Key não configurada. Por favor, adicione 'Gemini_API_Key1' nas configurações do projeto.");
+      console.warn("API Key não configurada. A IA não funcionará até que a chave seja adicionada.");
+      return null;
     }
     aiClient = new GoogleGenAI({ apiKey });
   }
@@ -17,11 +18,13 @@ const SYSTEM_INSTRUCTION = `Você é um assistente de redação homilética alta
 Sua função é ajudar pastores e líderes religiosos a estruturar sermões baseados em princípios sólidos de exegese bíblica e aplicação prática, mantendo total fidelidade ao texto bíblico.
 Responda sempre em Português (Brasil) de forma clara e inspiradora.`;
 
-const DEFAULT_MODEL = "gemini-flash-latest";
+const DEFAULT_MODEL = "gemini-1.5-flash"; // Updated to a more standard model name
 
 export async function generateSermonOutline(topic: string, baseText?: string) {
   try {
     const ai = getAIClient();
+    if (!ai) throw new Error("IA não disponível. Verifique se a Chave de API foi configurada corretamente.");
+    
     const prompt = `Gere um esboço estruturado e inspirador para um sermão sobre o tema "${topic}"${baseText ? ` baseado no texto bíblico: ${baseText}` : ''}. O esboço deve ser rico em conteúdo e incluir:
     - Título Sugerido (Impactante)
     - Introdução (Gancho forte)
@@ -58,6 +61,7 @@ export async function generateSermonOutline(topic: string, baseText?: string) {
 export async function analyzeVerse(reference: string, textRef: string) {
   try {
     const ai = getAIClient();
+    if (!ai) throw new Error("IA não disponível.");
     const prompt = `Analise profundamente o versículo ou passagem ${reference}: "${textRef}".
     Forneça contexto histórico, análise linguística (grego/hebraico), comentário teológico e sugestão de aplicação/ilustração.`;
 
@@ -85,6 +89,7 @@ export async function analyzeVerse(reference: string, textRef: string) {
 export async function generateSlideDescriptions(sermonContent: string) {
   try {
     const ai = getAIClient();
+    if (!ai) throw new Error("IA não disponível.");
     const prompt = `Com base no sermão abaixo, crie um plano de 6-8 slides. Para cada slide forneça: Título, Texto Principal e Descrição Visual para imagem.
     
     Sermão:

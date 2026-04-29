@@ -1,11 +1,22 @@
-import { initializeApp } from 'firebase/app';
+import { initializeApp, getApp, getApps } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import firebaseConfig from '../../firebase-applet-config.json';
 
-const app = initializeApp(firebaseConfig);
-export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
-export const auth = getAuth(app);
+// Initialize Firebase with safety check
+let app;
+try {
+  if (getApps().length === 0) {
+    app = initializeApp(firebaseConfig);
+  } else {
+    app = getApp();
+  }
+} catch (error) {
+  console.error("Erro ao inicializar Firebase:", error);
+}
+
+export const db = app ? getFirestore(app, firebaseConfig.firestoreDatabaseId) : null as any;
+export const auth = app ? getAuth(app) : null as any;
 
 export enum OperationType {
   CREATE = 'create',

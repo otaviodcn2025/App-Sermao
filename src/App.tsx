@@ -309,6 +309,26 @@ export default function App() {
     }
   };
 
+  if (!auth || !db) {
+    return (
+      <div className="h-screen flex flex-col items-center justify-center bg-slate-50 p-6 text-center">
+        <div className="bg-red-50 p-8 rounded-3xl border border-red-100 max-w-md shadow-xl">
+          <Shield size={48} className="text-red-500 mx-auto mb-6" />
+          <h1 className="text-xl font-bold text-slate-800 mb-4">Erro de Configuração</h1>
+          <p className="text-slate-500 text-sm mb-6">
+            Não foi possível inicializar o banco de dados. Isso geralmente acontece quando as chaves de configuração do Firebase estão faltando ou são inválidas.
+          </p>
+          <button 
+            onClick={() => window.location.reload()}
+            className="w-full py-3 bg-slate-900 text-white rounded-xl font-bold text-sm"
+          >
+            Tentar Novamente
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   if (authLoading) {
     return (
       <div className="h-screen flex items-center justify-center bg-slate-50">
