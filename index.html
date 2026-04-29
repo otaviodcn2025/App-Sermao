@@ -7,7 +7,13 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <link rel="manifest" href="/manifest.json" />
-    <title>ConectaSermon</title>
+    <title>Sermão Digital</title>
+    <script>
+      window.onerror = function(msg, url, lineNo, columnNo, error) {
+        console.error('Erro na aplicação:', msg, url, lineNo, columnNo, error);
+        return false;
+      };
+    </script>
   </head>
   <body>
     <div id="root"></div>

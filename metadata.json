@@ -1,6 +1,6 @@
 {
-  "name": "ConectaSermon",
-  "description": "An intelligent homiletics assistant for pastors, featuring rich text editing, automated sermon outlining, biblical commentary, and presentation tools powered by Gemini 1.5.",
+  "name": "Sermão Digital",
+  "description": "Assistente de homilética inteligente para pastores e líderes, com editor rico, esboços automáticos e ferramentas de apresentação.",
   "requestFramePermissions": [],
   "majorCapabilities": []
 }

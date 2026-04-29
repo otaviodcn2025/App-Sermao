@@ -1,6 +1,6 @@
 {
-  "name": "ConectaSermon",
-  "short_name": "Conecta",
+  "name": "Sermão Digital",
+  "short_name": "Sermão",
   "description": "Plataforma inteligente para esboços e pregações",
   "start_url": "/",
   "display": "standalone",
