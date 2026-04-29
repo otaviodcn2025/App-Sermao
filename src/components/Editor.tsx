@@ -83,7 +83,7 @@ export default function Editor({ content, onChange, onAiAction, title, onTitleCh
     },
     editorProps: {
       attributes: {
-        class: 'prose prose-slate max-w-none focus:outline-none min-h-[70vh] px-8 pb-12 bg-white selection:bg-orange-100',
+        class: 'prose prose-slate max-w-none focus:outline-none min-h-[70vh] px-4 lg:px-8 pb-12 bg-white selection:bg-orange-100',
       },
     },
   });
@@ -291,13 +291,13 @@ export default function Editor({ content, onChange, onAiAction, title, onTitleCh
       </div>
 
       <div className="flex-1 overflow-y-auto">
-        <div className="px-8 pt-12">
+        <div className="px-4 lg:px-8 pt-12">
           <input 
             type="text"
             value={title}
             onChange={(e) => onTitleChange(e.target.value)}
             placeholder="Título do Sermão"
-            className="w-full text-4xl font-black text-slate-900 border-none focus:ring-0 placeholder:text-slate-200 bg-transparent mb-2"
+            className="w-full text-2xl lg:text-4xl font-black text-slate-900 border-none focus:ring-0 placeholder:text-slate-200 bg-transparent mb-2"
           />
           <div className="w-20 h-1.5 bg-orange-500 rounded-full mb-8" />
         </div>

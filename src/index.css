@@ -9,6 +9,13 @@
   body {
     @apply bg-slate-50 text-slate-900 antialiased overflow-hidden h-[100dvh];
     -webkit-tap-highlight-color: transparent;
+    user-select: none; /* Prevent accidental text selection on UI */
+    overscroll-behavior-y: none; /* Disable pull-to-refresh feel for PWA */
+  }
+
+  /* Allow text selection only in editor and presentation */
+  .prose, .presentation-content, input, textarea {
+    user-select: text;
   }
 
   /* Fix for presentation mode prose font overrides */
