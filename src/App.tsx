@@ -57,7 +57,7 @@ export default function App() {
   const [isAdminPanelOpen, setIsAdminPanelOpen] = useState(false);
   const [sermons, setSermons] = useState<Sermon[]>([]);
   const [currentSermonId, setCurrentSermonId] = useState<string | null>(null);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth >= 1024);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(() => typeof window !== 'undefined' ? window.innerWidth >= 1024 : false);
   const [isBibleSearchOpen, setIsBibleSearchOpen] = useState(false); // Bible starts closed for better focus, even on desktop
   const [isAiLoading, setIsAiLoading] = useState(false);
   const [aiResponse, setAiResponse] = useState<string | null>(null);
@@ -65,6 +65,7 @@ export default function App() {
 
   // Monitor screen size
   useEffect(() => {
+    if (typeof window === 'undefined') return;
     let lastWidth = window.innerWidth;
     const handleResize = () => {
       const currentWidth = window.innerWidth;
@@ -87,6 +88,7 @@ export default function App() {
 
   // Update sidebars based on mobile tabs
   useEffect(() => {
+    if (typeof window === 'undefined') return;
     if (window.innerWidth < 1024) {
       if (mobileTab === 'list') {
         setIsSidebarOpen(true);
@@ -371,7 +373,7 @@ export default function App() {
       <div className="flex h-screen bg-slate-50 overflow-hidden font-sans relative pb-16 lg:pb-0">
       {/* Overlay for mobile sidebars */}
       <AnimatePresence>
-        {(isSidebarOpen || isBibleSearchOpen) && window.innerWidth < 1024 && (
+        {(isSidebarOpen || isBibleSearchOpen) && (typeof window !== 'undefined' && window.innerWidth < 1024) && (
           <motion.div 
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}

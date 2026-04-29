@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Book, ArrowRight, Loader2, Plus, ChevronLeft, ChevronRight, List } from 'lucide-react';
+import { Search, Book, ArrowRight, Loader2, Plus, ChevronLeft, ChevronRight, List, X } from 'lucide-react';
 import { BibleResponse } from '@/src/types';
 import { cn } from '@/src/lib/utils';
 import { ALL_BOOKS, OLD_TESTAMENT, NEW_TESTAMENT, BibleBook } from '@/src/constants/bible';
