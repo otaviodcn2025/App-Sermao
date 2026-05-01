@@ -36,10 +36,12 @@ import {
   Code,
   Undo,
   Redo,
-  ChevronDown
+  ChevronDown,
+  FileDown
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { cn } from '@/src/lib/utils';
+import { exportToWord } from '@/src/lib/export';
 
 interface EditorProps {
   content: string;
@@ -286,6 +288,17 @@ export default function Editor({ content, onChange, onAiAction, title, onTitleCh
             title="Linha Horizontal"
           >
             <Minus size={16} />
+          </button>
+        </div>
+
+        <div className="ml-auto flex items-center gap-0.5 px-1 border-l border-slate-200">
+          <button
+            onClick={() => exportToWord(title, editor.getHTML())}
+            className="flex items-center gap-2 px-3 py-1.5 bg-orange-600 text-white rounded-md hover:bg-orange-700 transition-colors text-xs font-bold shadow-sm"
+            title="Baixar para Word (.docx)"
+          >
+            <FileDown size={14} />
+            <span className="hidden sm:inline">Baixar Word</span>
           </button>
         </div>
       </div>

@@ -1,6 +1,6 @@
 {
   "name": "Sermão Digital",
-  "description": "Assistente de homilética inteligente para pastores e líderes, com editor rico, esboços automáticos e ferramentas de apresentação.",
+  "description": "Assistente de homilética inteligente para pastores e líderes, com editor rico, esboços automáticos, ferramentas de apresentação e exportação para Word.",
   "requestFramePermissions": [],
   "majorCapabilities": []
 }

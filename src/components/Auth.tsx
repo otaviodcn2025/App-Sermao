@@ -27,6 +27,10 @@ export default function Auth() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!auth || !db) {
+      setError("Sistema de autenticação não inicializado.");
+      return;
+    }
     setLoading(true);
     setError(null);
 
