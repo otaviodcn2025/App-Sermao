@@ -63,6 +63,7 @@ export default function App() {
   const [isAiLoading, setIsAiLoading] = useState(false);
   const [aiResponse, setAiResponse] = useState<string | null>(null);
   const [isAiModalOpen, setIsAiModalOpen] = useState(false);
+  const [sharedSermonData, setSharedSermonData] = useState<Sermon | null>(null);
   const [mobileTab, setMobileTab] = useState<'list' | 'editor' | 'bible'>('editor');
 
   // Initialize responsive state
@@ -119,6 +120,27 @@ export default function App() {
       setAuthLoading(false);
       return;
     }
+
+    // Check for shared sermon in URL
+    const params = new URLSearchParams(window.location.search);
+    const sharedId = params.get('sermon');
+    if (sharedId) {
+      const fetchShared = async () => {
+        try {
+          const docRef = doc(db, 'sermons', sharedId);
+          const snap = await getDoc(docRef);
+          if (snap.exists()) {
+            const data = { ...snap.data(), id: snap.id } as Sermon;
+            setSharedSermonData(data);
+            setCurrentSermonId(snap.id);
+          }
+        } catch (err) {
+          console.error("Erro ao carregar sermão compartilhado:", err);
+        }
+      };
+      fetchShared();
+    }
+
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       try {
         if (currentUser) {
@@ -223,7 +245,7 @@ export default function App() {
     }
   }, [user, currentSermonId]);
 
-  const currentSermon = sermons.find(s => s.id === currentSermonId);
+  const currentSermon = sermons.find(s => s.id === currentSermonId) || (sharedSermonData?.id === currentSermonId ? sharedSermonData : null);
 
   const createNewSermon = async () => {
     if (!user || !db) return;
@@ -365,6 +387,47 @@ export default function App() {
   }
 
   if (!user) {
+    if (sharedSermonData) {
+      return (
+        <div className="h-screen bg-slate-50 overflow-y-auto flex flex-col font-sans">
+          <div className="p-4 lg:p-6 border-b bg-white flex justify-between items-center sticky top-0 z-10 shadow-sm">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-orange-600 rounded-2xl flex items-center justify-center shadow-lg shadow-orange-100">
+                <Sparkles size={20} className="text-white" />
+              </div>
+              <h1 className="text-lg font-black text-slate-800 tracking-tight">Sermão Compartilhado</h1>
+            </div>
+            <button 
+              onClick={() => window.location.href = window.location.origin}
+              className="px-4 py-2 bg-slate-900 text-white rounded-xl font-bold text-xs hover:bg-slate-800 transition-colors"
+            >
+              Entrar no PregaIA
+            </button>
+          </div>
+          <div className="max-w-4xl w-full mx-auto p-4 lg:p-12 flex-1">
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-white rounded-3xl shadow-xl shadow-slate-200 border border-slate-100 overflow-hidden"
+            >
+              <div className="p-8 lg:p-16">
+                <div className="flex items-center gap-2 mb-4">
+                  <span className="px-3 py-1 bg-orange-50 text-orange-600 rounded-full text-[10px] font-black uppercase tracking-widest">Leitura Pública</span>
+                </div>
+                <h1 className="text-3xl lg:text-4xl font-black text-slate-900 mb-8 leading-tight">{sharedSermonData.title}</h1>
+                <div 
+                  className="prose prose-slate max-w-none prose-headings:font-black prose-p:leading-relaxed prose-strong:text-orange-600" 
+                  dangerouslySetInnerHTML={{ __html: sharedSermonData.content }} 
+                />
+              </div>
+            </motion.div>
+          </div>
+          <footer className="p-8 text-center text-slate-400 text-[10px] font-bold uppercase tracking-widest">
+            Criado com PregaIA • Inteligência para sua Pregação
+          </footer>
+        </div>
+      );
+    }
     return <Auth />;
   }
 
@@ -641,6 +704,7 @@ export default function App() {
                 onTitleChange={(title) => updateSermon({ title })}
                 title={currentSermon.title}
                 sermonId={currentSermonId}
+                readOnly={currentSermon.userId !== user?.uid}
               />
             ) : currentSermonId ? (
               <div className="h-[70vh] flex items-center justify-center">

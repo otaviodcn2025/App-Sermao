@@ -79,7 +79,7 @@ service cloud.firestore {
       }
 
       allow list: if (isApproved() || isAdmin()) && resource.data.userId == request.auth.uid;
-      allow get: if (isApproved() || isAdmin()) && (resource.data.userId == request.auth.uid || isAdmin());
+      allow get: if true; // Permite visualização pública via link direto
       allow create: if (isApproved() || isAdmin()) && 
                     isValidSermon(incoming()) && 
                     isValidId(sermonId) &&

@@ -57,9 +57,10 @@ interface EditorProps {
   title: string;
   onTitleChange: (title: string) => void;
   sermonId?: string | null;
+  readOnly?: boolean;
 }
 
-export default function Editor({ content, onChange, onAiAction, title, onTitleChange, sermonId }: EditorProps) {
+export default function Editor({ content, onChange, onAiAction, title, onTitleChange, sermonId, readOnly = false }: EditorProps) {
   const [showShareMenu, setShowShareMenu] = useState(false);
   const [copied, setCopied] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
@@ -92,6 +93,7 @@ export default function Editor({ content, onChange, onAiAction, title, onTitleCh
       }),
     ] as any[],
     content,
+    editable: !readOnly,
     onUpdate: ({ editor }) => {
       onChange(editor.getHTML());
     },
@@ -102,11 +104,19 @@ export default function Editor({ content, onChange, onAiAction, title, onTitleCh
     },
   });
 
+  // Keep editor in sync if content prop changes outside (e.g. AI generation or shared load)
   useEffect(() => {
     if (editor && content !== editor.getHTML()) {
       editor.commands.setContent(content);
     }
   }, [content, editor]);
+
+  // Update editable state
+  useEffect(() => {
+    if (editor) {
+      editor.setEditable(!readOnly);
+    }
+  }, [readOnly, editor]);
 
   if (!editor) return null;
 
@@ -143,23 +153,26 @@ export default function Editor({ content, onChange, onAiAction, title, onTitleCh
   };
 
   const handleShare = async () => {
+    const shareUrl = sermonId 
+      ? `${window.location.origin}${window.location.pathname}?sermon=${sermonId}`
+      : window.location.href;
+
     if (navigator.share) {
       try {
         await navigator.share({
           title: `Sermão: ${title}`,
           text: `Confira meu esboço de sermão: ${title}`,
-          url: window.location.href, // This will share the current app URL
+          url: shareUrl,
         });
       } catch (err) {
         console.log('Error sharing:', err);
       }
     } else {
       // Fallback: Copy link
-      const url = window.location.href;
-      navigator.clipboard.writeText(url);
+      navigator.clipboard.writeText(shareUrl);
       setLinkCopied(true);
       setTimeout(() => setLinkCopied(false), 2000);
-      alert('Link copiado para a área de transferência!');
+      alert('Link do sermão copiado para a área de transferência!');
     }
   };
 
