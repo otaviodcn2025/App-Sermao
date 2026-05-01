@@ -98,10 +98,12 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
             </button>
             <div>
               <h1 className="text-xl font-bold text-slate-800 flex items-center gap-2">
-                <Users size={24} className="text-orange-600" />
+                <Users size={24} className="text-orange-600" /> 
                 Gestão de Usuários
               </h1>
-              <p className="text-xs text-slate-500 font-medium tracking-tight">Controle de acessos e permissões do ConectaSermon</p>
+              <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mt-1">
+                Administração do Sistema
+              </p>
             </div>
           </div>
 

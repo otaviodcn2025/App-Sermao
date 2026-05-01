@@ -728,7 +728,7 @@ export default function App() {
         }}
         transition={{ type: "spring", damping: 25, stiffness: 200 }}
         className={cn(
-          "flex flex-col bg-white overflow-hidden z-[70] border-l border-slate-200",
+          "flex flex-col bg-white overflow-hidden z-[70] border-l border-slate-200 relative",
           "fixed inset-y-0 right-0 lg:relative lg:translate-x-0"
         )}
       >
