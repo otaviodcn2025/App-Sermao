@@ -161,7 +161,7 @@ export default function BibleSearch({ onAddVerse }: BibleSearchProps) {
   };
 
   return (
-    <div className="flex flex-col flex-1 h-full min-h-0 bg-slate-50 relative">
+    <div className="flex flex-col flex-1 min-h-0 bg-slate-50 relative overflow-hidden">
       {/* Tabs */}
       <div className="flex border-b border-slate-200 bg-white shrink-0 z-20">
         <button

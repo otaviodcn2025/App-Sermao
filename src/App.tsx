@@ -722,18 +722,18 @@ export default function App() {
       <motion.aside 
         initial={false}
         animate={{ 
-          width: isBibleSearchOpen ? (window.innerWidth < 1024 ? '100%' : 320) : 0, 
+          width: isBibleSearchOpen ? (window.innerWidth < 1024 ? '100vw' : 320) : 0, 
           opacity: isBibleSearchOpen ? 1 : 0,
           x: isBibleSearchOpen ? 0 : 320
         }}
         transition={{ type: "spring", damping: 25, stiffness: 200 }}
         className={cn(
-          "flex flex-col bg-white overflow-hidden z-[70] border-l border-slate-200 relative",
-          "fixed top-0 bottom-16 right-0 lg:bottom-0 lg:relative lg:translate-x-0"
+          "flex flex-col bg-white z-[70] border-l border-slate-200",
+          "fixed top-0 bottom-16 right-0 lg:bottom-0 lg:relative lg:translate-x-0 overflow-hidden"
         )}
       >
-        <div className="flex-1 flex flex-col">
-          <div className="p-4 lg:hidden border-b border-slate-100 flex items-center justify-between bg-white sticky top-0 z-10">
+        <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+          <div className="p-4 lg:hidden border-b border-slate-100 flex items-center justify-between bg-white shrink-0">
             <h3 className="font-bold text-slate-800">Bíblia Sagrada</h3>
             <button onClick={() => setMobileTab('editor')} className="p-2 text-slate-400">
                <X size={20} />
