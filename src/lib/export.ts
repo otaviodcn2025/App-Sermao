@@ -117,13 +117,14 @@ export async function exportToPdf(title: string, htmlContent: string) {
   // Basic styling for the PDF
   const style = document.createElement('style');
   style.innerHTML = `
-    .sermon-content h1 { font-size: 24px; margin-top: 20px; font-weight: bold; color: #334155; margin-bottom: 10px; }
-    .sermon-content h2 { font-size: 20px; margin-top: 15px; font-weight: bold; color: #475569; margin-bottom: 8px; }
-    .sermon-content p { margin-bottom: 10px; font-size: 14px; }
+    .sermon-content h1 { font-size: 24px; margin-top: 20px; font-weight: bold; color: #334155; margin-bottom: 10px; page-break-after: avoid; break-after: avoid; }
+    .sermon-content h2 { font-size: 20px; margin-top: 15px; font-weight: bold; color: #475569; margin-bottom: 8px; page-break-after: avoid; break-after: avoid; }
+    .sermon-content p { margin-bottom: 10px; font-size: 14px; page-break-inside: avoid; break-inside: avoid; }
     .sermon-content ul, .sermon-content ol { margin-bottom: 15px; padding-left: 20px; }
-    .sermon-content li { margin-bottom: 5px; font-size: 14px; }
-    .sermon-content blockquote { border-left: 4px solid #e2e8f0; padding-left: 15px; font-style: italic; color: #64748b; margin: 15px 0; }
-    .sermon-content table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+    .sermon-content li { margin-bottom: 5px; font-size: 14px; page-break-inside: avoid; break-inside: avoid; }
+    .sermon-content blockquote { border-left: 4px solid #e2e8f0; padding-left: 15px; font-style: italic; color: #64748b; margin: 15px 0; page-break-inside: avoid; break-inside: avoid; }
+    .sermon-content table { width: 100%; border-collapse: collapse; margin-bottom: 20px; page-break-inside: auto; }
+    .sermon-content tr { page-break-inside: avoid; break-inside: avoid; }
     .sermon-content th, .sermon-content td { border: 1px solid #e2e8f0; padding: 8px; text-align: left; font-size: 12px; }
     .sermon-content th { background-color: #f8fafc; font-weight: bold; }
   `;
@@ -133,7 +134,38 @@ export async function exportToPdf(title: string, htmlContent: string) {
     margin: [15, 15],
     filename: `${title || 'Sermão'}.pdf`,
     image: { type: 'jpeg', quality: 0.98 },
-    html2canvas: { scale: 2, useCORS: true, logging: false },
+    pagebreak: { mode: ['avoid-all', 'css', 'legacy'] },
+    html2canvas: { 
+      scale: 2, 
+      useCORS: true, 
+      logging: false,
+      // Workaround for Tailwind 4 oklch colors failing in html2canvas
+      onclone: (clonedDoc: any) => {
+        // Disable external stylesheets that might contain complex CSS features
+        const links = Array.from(clonedDoc.getElementsByTagName('link')) as HTMLLinkElement[];
+        links.forEach(link => {
+          if (link.rel === 'stylesheet') {
+            link.disabled = true;
+          }
+        });
+
+        // Replace oklch in all style tags with a safe fallback
+        const styleTags = Array.from(clonedDoc.getElementsByTagName('style')) as HTMLStyleElement[];
+        styleTags.forEach(style => {
+          if (style.innerHTML.includes('oklch')) {
+            style.innerHTML = style.innerHTML.replace(/oklch\([^)]+\)/g, '#333333');
+          }
+        });
+
+        // Also check inline styles on elements
+        const allElements = Array.from(clonedDoc.querySelectorAll('*')) as HTMLElement[];
+        allElements.forEach(el => {
+          if (el.style && el.style.cssText && el.style.cssText.includes('oklch')) {
+            el.style.cssText = el.style.cssText.replace(/oklch\([^)]+\)/g, '#333333');
+          }
+        });
+      }
+    },
     jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
   };
 
