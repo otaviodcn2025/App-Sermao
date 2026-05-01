@@ -1,10 +1,10 @@
 import { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType } from 'docx';
 import { saveAs } from 'file-saver';
+// @ts-ignore
+import html2pdf from 'html2pdf.js';
 
 /**
  * Super simple HTML to DOCX converter for the sermon editor.
- * Handles headings, paragraphs, bold, italic.
- * For more complex layouts, a proper HTML parser would be needed.
  */
 export async function exportToWord(title: string, htmlContent: string) {
   // Simple parser: strip tags for now or use a basic approach
@@ -98,4 +98,49 @@ export async function exportToWord(title: string, htmlContent: string) {
 
   const blob = await Packer.toBlob(wordDoc);
   saveAs(blob, `${title || 'Sermão'}.docx`);
+}
+
+/**
+ * Exports HTML content to PDF using html2pdf.js
+ */
+export async function exportToPdf(title: string, htmlContent: string) {
+  const element = document.createElement('div');
+  element.innerHTML = `
+    <div style="padding: 40px; font-family: sans-serif; line-height: 1.6; color: #1e293b;">
+      <h1 style="text-align: center; color: #0f172a; margin-bottom: 30px; font-size: 28px;">${title || 'Sermão'}</h1>
+      <div class="sermon-content">
+        ${htmlContent}
+      </div>
+    </div>
+  `;
+
+  // Basic styling for the PDF
+  const style = document.createElement('style');
+  style.innerHTML = `
+    .sermon-content h1 { font-size: 24px; margin-top: 20px; font-weight: bold; color: #334155; margin-bottom: 10px; }
+    .sermon-content h2 { font-size: 20px; margin-top: 15px; font-weight: bold; color: #475569; margin-bottom: 8px; }
+    .sermon-content p { margin-bottom: 10px; font-size: 14px; }
+    .sermon-content ul, .sermon-content ol { margin-bottom: 15px; padding-left: 20px; }
+    .sermon-content li { margin-bottom: 5px; font-size: 14px; }
+    .sermon-content blockquote { border-left: 4px solid #e2e8f0; padding-left: 15px; font-style: italic; color: #64748b; margin: 15px 0; }
+    .sermon-content table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+    .sermon-content th, .sermon-content td { border: 1px solid #e2e8f0; padding: 8px; text-align: left; font-size: 12px; }
+    .sermon-content th { background-color: #f8fafc; font-weight: bold; }
+  `;
+  element.appendChild(style);
+
+  const opt = {
+    margin: [15, 15],
+    filename: `${title || 'Sermão'}.pdf`,
+    image: { type: 'jpeg', quality: 0.98 },
+    html2canvas: { scale: 2, useCORS: true, logging: false },
+    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+  };
+
+  try {
+    // @ts-ignore
+    await html2pdf().set(opt).from(element).save();
+  } catch (error) {
+    console.error('Error exporting PDF:', error);
+  }
 }

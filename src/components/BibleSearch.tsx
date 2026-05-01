@@ -26,6 +26,12 @@ export default function BibleSearch({ onAddVerse }: BibleSearchProps) {
 
   const VERSION = 'NVIPT'; // Bolls Life NVI Portuguese
 
+  // Scroll to top when browse level changes
+  useEffect(() => {
+    const container = document.getElementById('bible-content-area');
+    if (container) container.scrollTo({ top: 0, behavior: 'auto' });
+  }, [browseLevel, activeTab]);
+
   const loadChapter = async (book: BibleBook, chapter: number) => {
     setLoading(true);
     setError(null);
@@ -154,7 +160,7 @@ export default function BibleSearch({ onAddVerse }: BibleSearchProps) {
   };
 
   return (
-    <div className="flex flex-col h-full bg-slate-50 overflow-hidden relative">
+    <div className="flex flex-col flex-1 h-full min-h-0 bg-slate-50 relative">
       {/* Tabs */}
       <div className="flex border-b border-slate-200 bg-white shrink-0 z-20">
         <button
@@ -239,7 +245,7 @@ export default function BibleSearch({ onAddVerse }: BibleSearchProps) {
       </div>
 
       {/* Main Scrollable Area */}
-      <div id="bible-content-area" className="flex-1 overflow-y-auto custom-scrollbar overscroll-behavior-contain min-h-0">
+      <div id="bible-content-area" className="flex-1 overflow-y-auto min-h-0 overscroll-contain bg-slate-50 scroll-smooth">
         {loading ? (
           <div className="flex flex-col items-center justify-center py-20 text-slate-400">
             <Loader2 size={32} className="animate-spin mb-4 text-orange-500" />
@@ -252,43 +258,66 @@ export default function BibleSearch({ onAddVerse }: BibleSearchProps) {
             </div>
           </div>
         ) : activeTab === 'browse' ? (
-          <div className="p-4">
+          <div className="p-4 space-y-6">
             {browseLevel === 'books' && (
-              <div className="space-y-8 pb-10">
-                <section>
-                  <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-3">
-                    <span className="w-8 h-px bg-slate-200" />
-                    Antigo Testamento
-                  </h4>
+              <div className="space-y-12 pb-32">
+                <div>
+                  <div className="flex items-center justify-between mb-4 sticky top-0 bg-slate-50/95 backdrop-blur-sm py-2 z-10">
+                    <h4 className="text-[10px] font-black text-orange-600 bg-orange-50 px-3 py-1.5 rounded-full uppercase tracking-widest inline-flex items-center gap-2 border border-orange-100/50">
+                      <Book size={12} />
+                      Antigo Testamento
+                    </h4>
+                    <button 
+                      onClick={() => {
+                        const nt = document.getElementById('novo-testamento');
+                        if (nt) nt.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                      }}
+                      className="text-[10px] font-bold text-slate-400 hover:text-orange-500 transition-colors uppercase flex items-center gap-1"
+                    >
+                      Novo Testamento <ChevronDown size={12} />
+                    </button>
+                  </div>
                   <div className="grid grid-cols-2 gap-2">
                     {OLD_TESTAMENT.filter(b => b.name.toLowerCase().includes(bookFilter.toLowerCase())).map(book => (
                       <button
                         key={book.key}
                         onClick={() => handleBookClick(book)}
-                        className="text-left px-4 py-3 text-xs font-bold bg-white rounded-xl border border-slate-100 shadow-sm hover:border-orange-200 hover:shadow-orange-100/50 transition-all active:scale-[0.98] truncate"
+                        className="text-left px-4 py-3 text-xs font-bold bg-white rounded-xl border border-slate-100 shadow-sm hover:border-orange-300 hover:shadow-orange-100/30 transition-all active:scale-[0.98] truncate"
                       >
                         {book.name}
                       </button>
                     ))}
                   </div>
-                </section>
-                <section>
-                  <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-3">
-                    <span className="w-8 h-px bg-slate-200" />
-                    Novo Testamento
-                  </h4>
+                </div>
+
+                <div id="novo-testamento">
+                  <div className="flex items-center justify-between mb-4 sticky top-0 bg-slate-50/95 backdrop-blur-sm py-2 z-10">
+                    <h4 className="text-[10px] font-black text-orange-600 bg-orange-50 px-3 py-1.5 rounded-full uppercase tracking-widest inline-flex items-center gap-2 border border-orange-100/50">
+                      <Book size={12} />
+                      Novo Testamento
+                    </h4>
+                    <button 
+                      onClick={() => {
+                        const container = document.getElementById('bible-content-area');
+                        if (container) container.scrollTo({ top: 0, behavior: 'smooth' });
+                      }}
+                      className="text-[10px] font-bold text-slate-400 hover:text-orange-500 transition-colors uppercase flex items-center gap-1"
+                    >
+                      <ChevronDown size={12} className="rotate-180" /> Topo
+                    </button>
+                  </div>
                   <div className="grid grid-cols-2 gap-2">
                     {NEW_TESTAMENT.filter(b => b.name.toLowerCase().includes(bookFilter.toLowerCase())).map(book => (
                       <button
                         key={book.key}
                         onClick={() => handleBookClick(book)}
-                        className="text-left px-4 py-3 text-xs font-bold bg-white rounded-xl border border-slate-100 shadow-sm hover:border-orange-200 hover:shadow-orange-100/50 transition-all active:scale-[0.98] truncate"
+                        className="text-left px-4 py-3 text-xs font-bold bg-white rounded-xl border border-slate-100 shadow-sm hover:border-orange-300 hover:shadow-orange-100/30 transition-all active:scale-[0.98] truncate"
                       >
                         {book.name}
                       </button>
                     ))}
                   </div>
-                </section>
+                </div>
               </div>
             )}
 
