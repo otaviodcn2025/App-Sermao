@@ -9,8 +9,6 @@
   body {
     @apply bg-slate-50 text-slate-900 antialiased overflow-hidden h-[100dvh];
     -webkit-tap-highlight-color: transparent;
-    user-select: none; /* Prevent accidental text selection on UI */
-    overscroll-behavior-y: none; /* Disable pull-to-refresh feel for PWA */
   }
 
   /* Allow text selection only in editor and presentation */
@@ -38,13 +36,20 @@
 
   /* Custom Scrollbar */
   ::-webkit-scrollbar {
-    width: 6px;
+    width: 8px;
   }
   ::-webkit-scrollbar-track {
-    @apply bg-transparent;
+    @apply bg-slate-50;
   }
   ::-webkit-scrollbar-thumb {
-    @apply bg-slate-200 rounded-full hover:bg-slate-300 transition-colors;
+    @apply bg-slate-300 rounded-full hover:bg-slate-400 transition-colors border-2 border-slate-50;
+  }
+
+  .bible-scrollbar::-webkit-scrollbar {
+    width: 8px;
+  }
+  .bible-scrollbar::-webkit-scrollbar-thumb {
+    @apply bg-orange-200 hover:bg-orange-300;
   }
 }
 

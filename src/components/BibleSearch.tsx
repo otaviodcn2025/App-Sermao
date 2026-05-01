@@ -14,6 +14,7 @@ type BrowseLevel = 'books' | 'chapters' | 'verses';
 export default function BibleSearch({ onAddVerse }: BibleSearchProps) {
   const [activeTab, setActiveTab] = useState<Tab>('browse');
   const [browseLevel, setBrowseLevel] = useState<BrowseLevel>('books');
+  const [testament, setTestament] = useState<'old' | 'new'>('old');
   const [query, setQuery] = useState('');
   const [bookFilter, setBookFilter] = useState('');
   const [loading, setLoading] = useState(false);
@@ -30,7 +31,7 @@ export default function BibleSearch({ onAddVerse }: BibleSearchProps) {
   useEffect(() => {
     const container = document.getElementById('bible-content-area');
     if (container) container.scrollTo({ top: 0, behavior: 'auto' });
-  }, [browseLevel, activeTab]);
+  }, [browseLevel, activeTab, testament]);
 
   const loadChapter = async (book: BibleBook, chapter: number) => {
     setLoading(true);
@@ -245,11 +246,11 @@ export default function BibleSearch({ onAddVerse }: BibleSearchProps) {
       </div>
 
       {/* Main Scrollable Area */}
-      <div id="bible-content-area" className="flex-1 overflow-y-auto min-h-0 overscroll-contain bg-slate-50 scroll-smooth">
+      <div id="bible-content-area" className="flex-1 overflow-y-auto bg-slate-50 scroll-smooth pb-20 touch-pan-y bible-scrollbar">
         {loading ? (
           <div className="flex flex-col items-center justify-center py-20 text-slate-400">
             <Loader2 size={32} className="animate-spin mb-4 text-orange-500" />
-            <p className="text-[10px] font-black uppercase tracking-widest">Sondando as Escrituras...</p>
+            <p className="text-[10px] font-black uppercase tracking-widest text-center">Sondando as Escrituras...</p>
           </div>
         ) : error ? (
           <div className="p-6">
@@ -258,65 +259,46 @@ export default function BibleSearch({ onAddVerse }: BibleSearchProps) {
             </div>
           </div>
         ) : activeTab === 'browse' ? (
-          <div className="p-4 space-y-6">
+          <div className="p-3">
             {browseLevel === 'books' && (
-              <div className="space-y-12 pb-32">
-                <div>
-                  <div className="flex items-center justify-between mb-4 sticky top-0 bg-slate-50/95 backdrop-blur-sm py-2 z-10">
-                    <h4 className="text-[10px] font-black text-orange-600 bg-orange-50 px-3 py-1.5 rounded-full uppercase tracking-widest inline-flex items-center gap-2 border border-orange-100/50">
-                      <Book size={12} />
-                      Antigo Testamento
-                    </h4>
-                    <button 
-                      onClick={() => {
-                        const nt = document.getElementById('novo-testamento');
-                        if (nt) nt.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                      }}
-                      className="text-[10px] font-bold text-slate-400 hover:text-orange-500 transition-colors uppercase flex items-center gap-1"
-                    >
-                      Novo Testamento <ChevronDown size={12} />
-                    </button>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    {OLD_TESTAMENT.filter(b => b.name.toLowerCase().includes(bookFilter.toLowerCase())).map(book => (
-                      <button
-                        key={book.key}
-                        onClick={() => handleBookClick(book)}
-                        className="text-left px-4 py-3 text-xs font-bold bg-white rounded-xl border border-slate-100 shadow-sm hover:border-orange-300 hover:shadow-orange-100/30 transition-all active:scale-[0.98] truncate"
-                      >
-                        {book.name}
-                      </button>
-                    ))}
-                  </div>
+              <div className="space-y-4">
+                {/* Testament Switcher */}
+                <div className="flex gap-2 p-1 bg-slate-100 rounded-xl mb-4">
+                  <button
+                    onClick={() => setTestament('old')}
+                    className={cn(
+                      "flex-1 py-2 text-[10px] font-black uppercase tracking-wider rounded-lg transition-all",
+                      testament === 'old' ? "bg-white text-orange-600 shadow-sm" : "text-slate-400 hover:text-slate-600"
+                    )}
+                  >
+                    Antigo
+                  </button>
+                  <button
+                    onClick={() => setTestament('new')}
+                    className={cn(
+                      "flex-1 py-2 text-[10px] font-black uppercase tracking-wider rounded-lg transition-all",
+                      testament === 'new' ? "bg-white text-orange-600 shadow-sm" : "text-slate-400 hover:text-slate-600"
+                    )}
+                  >
+                    Novo
+                  </button>
                 </div>
 
-                <div id="novo-testamento">
-                  <div className="flex items-center justify-between mb-4 sticky top-0 bg-slate-50/95 backdrop-blur-sm py-2 z-10">
-                    <h4 className="text-[10px] font-black text-orange-600 bg-orange-50 px-3 py-1.5 rounded-full uppercase tracking-widest inline-flex items-center gap-2 border border-orange-100/50">
-                      <Book size={12} />
-                      Novo Testamento
-                    </h4>
-                    <button 
-                      onClick={() => {
-                        const container = document.getElementById('bible-content-area');
-                        if (container) container.scrollTo({ top: 0, behavior: 'smooth' });
-                      }}
-                      className="text-[10px] font-bold text-slate-400 hover:text-orange-500 transition-colors uppercase flex items-center gap-1"
-                    >
-                      <ChevronDown size={12} className="rotate-180" /> Topo
-                    </button>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    {NEW_TESTAMENT.filter(b => b.name.toLowerCase().includes(bookFilter.toLowerCase())).map(book => (
+                <div className="grid grid-cols-3 gap-1.5">
+                  {(testament === 'old' ? OLD_TESTAMENT : NEW_TESTAMENT)
+                    .filter(b => b.name.toLowerCase().includes(bookFilter.toLowerCase()))
+                    .map(book => (
                       <button
                         key={book.key}
                         onClick={() => handleBookClick(book)}
-                        className="text-left px-4 py-3 text-xs font-bold bg-white rounded-xl border border-slate-100 shadow-sm hover:border-orange-300 hover:shadow-orange-100/30 transition-all active:scale-[0.98] truncate"
+                        className="flex flex-col items-center justify-center p-2 h-20 text-[10px] font-bold bg-white rounded-xl border border-slate-100 shadow-sm hover:border-orange-300 hover:shadow-orange-100/30 transition-all active:scale-95 text-center leading-tight gap-1 group"
                       >
-                        {book.name}
+                        <div className="w-8 h-8 rounded-lg bg-slate-50 flex items-center justify-center text-slate-300 group-hover:text-orange-500 group-hover:bg-orange-50 transition-colors">
+                          <Book size={14} />
+                        </div>
+                        <span className="truncate w-full px-1">{book.name}</span>
                       </button>
                     ))}
-                  </div>
                 </div>
               </div>
             )}
