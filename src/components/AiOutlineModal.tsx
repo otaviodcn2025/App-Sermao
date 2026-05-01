@@ -129,17 +129,17 @@ export default function AiOutlineModal({ onClose, onGenerate, isLoading }: AiOut
         initial={{ scale: 0.9, opacity: 0, y: 20 }}
         animate={{ scale: 1, opacity: 1, y: 0 }}
         exit={{ scale: 0.9, opacity: 0, y: 20 }}
-        className="relative w-full max-w-2xl bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col"
+        className="relative w-full max-w-2xl max-h-[90vh] bg-white rounded-[32px] shadow-2xl overflow-hidden flex flex-col"
       >
         {/* Header */}
-        <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-white relative z-10">
+        <div className="p-5 lg:p-6 border-b border-slate-100 flex items-center justify-between bg-white relative z-10 shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-orange-600 rounded-2xl flex items-center justify-center shadow-lg shadow-orange-200">
-              <Sparkles size={20} className="text-white" />
+            <div className="w-9 h-9 lg:w-10 lg:h-10 bg-orange-600 rounded-xl lg:rounded-2xl flex items-center justify-center shadow-lg shadow-orange-200 shrink-0">
+              <Sparkles size={18} className="text-white" />
             </div>
-            <div>
-              <h2 className="text-lg font-bold text-slate-800">Gerador de Esboço Inteligente</h2>
-              <p className="text-xs text-slate-400 font-medium tracking-tight">Crie mensagens estruturadas com ajuda da IA</p>
+            <div className="min-w-0">
+              <h2 className="text-base lg:text-lg font-bold text-slate-800 truncate">Gerador de Esboço Inteligente</h2>
+              <p className="text-[10px] lg:text-xs text-slate-400 font-medium tracking-tight truncate">Crie mensagens estruturadas com ajuda da IA</p>
             </div>
           </div>
           <button 
@@ -150,7 +150,7 @@ export default function AiOutlineModal({ onClose, onGenerate, isLoading }: AiOut
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+        <div className="flex-1 overflow-y-auto p-5 lg:p-6 space-y-6 bible-scrollbar">
           {/* Main Topic Input */}
           <div className="space-y-2">
             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
@@ -274,11 +274,11 @@ export default function AiOutlineModal({ onClose, onGenerate, isLoading }: AiOut
         </div>
 
         {/* Footer */}
-        <div className="p-6 bg-slate-50 flex items-center justify-end gap-3">
+        <div className="p-5 lg:p-6 bg-slate-50 border-t border-slate-100 flex flex-col-reverse sm:flex-row items-center justify-end gap-3 shrink-0">
           <button 
             disabled={isLoading}
             onClick={onClose}
-            className="px-6 py-2.5 text-sm font-bold text-slate-400 hover:text-slate-600 transition-colors"
+            className="w-full sm:w-auto px-6 py-2.5 text-sm font-bold text-slate-400 hover:text-slate-600 transition-colors"
           >
             Cancelar
           </button>
@@ -286,7 +286,7 @@ export default function AiOutlineModal({ onClose, onGenerate, isLoading }: AiOut
             disabled={isLoading || !theme.trim()}
             onClick={handleGenerateClick}
             className={cn(
-              "flex items-center gap-2 px-8 py-2.5 rounded-2xl text-sm font-bold shadow-lg transition-all",
+              "w-full sm:w-auto flex items-center justify-center gap-2 px-8 py-3 lg:py-2.5 rounded-2xl text-sm font-bold shadow-lg transition-all",
               isLoading || !theme.trim() 
                 ? "bg-slate-300 text-white cursor-not-allowed" 
                 : "bg-orange-600 text-white hover:bg-orange-700 shadow-orange-200"
