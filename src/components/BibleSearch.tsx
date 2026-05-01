@@ -98,6 +98,7 @@ export default function BibleSearch({ onAddVerse }: BibleSearchProps) {
       
       if (bookOnly) {
         handleBookClick(bookOnly);
+        setActiveTab('browse');
         setLoading(false);
         return;
       }
@@ -172,6 +173,9 @@ export default function BibleSearch({ onAddVerse }: BibleSearchProps) {
       }
 
       if (!res.ok) {
+        if (res.status === 403) {
+          throw new Error('Acesso negado (403). A API da Bíblia está temporariamente bloqueando a requisição. Tente navegar manualmente ou aguarde.');
+        }
         throw new Error('Erro ao buscar. Tente novamente.');
       }
 
@@ -245,7 +249,7 @@ export default function BibleSearch({ onAddVerse }: BibleSearchProps) {
   };
 
   return (
-    <div className="flex flex-col h-full bg-slate-50 relative overflow-hidden">
+    <div className="flex flex-col flex-1 h-full min-h-0 bg-slate-50 relative overflow-hidden">
       {/* Tabs */}
       <div className="flex border-b border-slate-200 bg-white shrink-0 z-20">
         <button
@@ -340,15 +344,21 @@ export default function BibleSearch({ onAddVerse }: BibleSearchProps) {
       {/* Main Scrollable Area */}
       <div id="bible-content-area" className="flex-1 overflow-y-auto bg-slate-50 scroll-smooth pb-40 bible-scrollbar overscroll-contain min-h-0 touch-pan-y">
         {loading ? (
-          <div className="flex flex-col items-center justify-center py-20 text-slate-400">
+          <div className="flex flex-col items-center justify-center py-20 text-slate-400 h-full">
             <Loader2 size={32} className="animate-spin mb-4 text-orange-500" />
             <p className="text-[10px] font-black uppercase tracking-widest text-center">Sondando as Escrituras...</p>
           </div>
         ) : error ? (
-          <div className="p-6">
-            <div className="bg-red-50 border border-red-100 rounded-2xl p-4 text-red-600 text-xs text-center font-medium shadow-sm">
+          <div className="p-6 flex flex-col items-center justify-center h-full">
+            <div className="bg-red-50 border border-red-100 rounded-2xl p-4 text-red-600 text-xs text-center font-medium shadow-sm w-full mb-4">
               {error}
             </div>
+            <button 
+              onClick={() => setError(null)}
+              className="text-[10px] font-black text-orange-600 bg-orange-50 px-4 py-2 rounded-full uppercase tracking-widest border border-orange-100"
+            >
+              Tentar Novamente
+            </button>
           </div>
         ) : activeTab === 'browse' ? (
           <div className="p-3">
