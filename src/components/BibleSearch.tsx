@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Book, ArrowRight, Loader2, Plus, ChevronLeft, ChevronRight, List, X } from 'lucide-react';
+import { Search, Book, ArrowRight, Loader2, Plus, ChevronLeft, ChevronRight, List, X, ChevronDown } from 'lucide-react';
 import { BibleResponse } from '@/src/types';
 import { cn } from '@/src/lib/utils';
 import { ALL_BOOKS, OLD_TESTAMENT, NEW_TESTAMENT, BibleBook } from '@/src/constants/bible';
@@ -18,6 +18,8 @@ export default function BibleSearch({ onAddVerse }: BibleSearchProps) {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<BibleResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [showBookSelector, setShowBookSelector] = useState(false);
+  const [showChapterSelector, setShowChapterSelector] = useState(false);
 
   // Browse state
   const [browseLevel, setBrowseLevel] = useState<BrowseLevel>('books');
@@ -39,13 +41,14 @@ export default function BibleSearch({ onAddVerse }: BibleSearchProps) {
     setLoading(true);
     setError(null);
     try {
-      // Usando bible-api.com com tradução almeida (se disponível) ou padrão
       const res = await fetch(`https://bible-api.com/${encodeURIComponent(q)}?translation=almeida`);
       if (!res.ok) throw new Error('Não foi possível encontrar este versículo ou capítulo.');
       const data = await res.json();
       setResult(data);
       if (customQuery) {
         setBrowseLevel('verses');
+        const container = document.getElementById('bible-content-area');
+        if (container) container.scrollTo({ top: 0, behavior: 'smooth' });
       } else {
         setActiveTab('search');
       }
@@ -61,12 +64,46 @@ export default function BibleSearch({ onAddVerse }: BibleSearchProps) {
     setSelectedBook(book);
     setBrowseLevel('chapters');
     setBookFilter('');
+    setShowBookSelector(false);
   };
 
   const handleChapterSelect = (chapter: number) => {
     setSelectedChapter(chapter);
+    setShowChapterSelector(false);
     if (selectedBook) {
       searchBible(undefined, `${selectedBook.key} ${chapter}`);
+    }
+  };
+
+  const goToNextChapter = () => {
+    if (!selectedBook || !selectedChapter) return;
+    if (selectedChapter < selectedBook.chapters) {
+      handleChapterSelect(selectedChapter + 1);
+    } else {
+      // Go to next book
+      const currentIndex = ALL_BOOKS.findIndex(b => b.key === selectedBook.key);
+      if (currentIndex < ALL_BOOKS.length - 1) {
+        const nextBook = ALL_BOOKS[currentIndex + 1];
+        setSelectedBook(nextBook);
+        setSelectedChapter(1);
+        searchBible(undefined, `${nextBook.key} 1`);
+      }
+    }
+  };
+
+  const goToPrevChapter = () => {
+    if (!selectedBook || !selectedChapter) return;
+    if (selectedChapter > 1) {
+      handleChapterSelect(selectedChapter - 1);
+    } else {
+      // Go to prev book
+      const currentIndex = ALL_BOOKS.findIndex(b => b.key === selectedBook.key);
+      if (currentIndex > 0) {
+        const prevBook = ALL_BOOKS[currentIndex - 1];
+        setSelectedBook(prevBook);
+        setSelectedChapter(prevBook.chapters);
+        searchBible(undefined, `${prevBook.key} ${prevBook.chapters}`);
+      }
     }
   };
 
@@ -84,13 +121,13 @@ export default function BibleSearch({ onAddVerse }: BibleSearchProps) {
   };
 
   return (
-    <div className="flex flex-col h-full bg-slate-50 border-l border-slate-200 w-full overflow-hidden">
+    <div className="flex flex-col h-full bg-white border-l border-slate-200 w-full overflow-hidden shadow-2xl">
       {/* Tabs */}
-      <div className="flex border-b border-slate-200 bg-white shrink-0">
+      <div className="flex border-b border-slate-100 bg-white shrink-0">
         <button
           onClick={() => setActiveTab('browse')}
           className={cn(
-            "flex-1 py-4 text-xs font-bold uppercase tracking-widest transition-all border-b-2",
+            "flex-1 py-4 text-[10px] font-black uppercase tracking-widest transition-all border-b-2",
             activeTab === 'browse' ? "border-orange-500 text-orange-600" : "border-transparent text-slate-400 hover:text-slate-600"
           )}
         >
@@ -99,7 +136,7 @@ export default function BibleSearch({ onAddVerse }: BibleSearchProps) {
         <button
           onClick={() => setActiveTab('search')}
           className={cn(
-            "flex-1 py-4 text-xs font-bold uppercase tracking-widest transition-all border-b-2",
+            "flex-1 py-4 text-[10px] font-black uppercase tracking-widest transition-all border-b-2",
             activeTab === 'search' ? "border-orange-500 text-orange-600" : "border-transparent text-slate-400 hover:text-slate-600"
           )}
         >
@@ -107,55 +144,147 @@ export default function BibleSearch({ onAddVerse }: BibleSearchProps) {
         </button>
       </div>
 
-      <div className="p-4 bg-white shadow-sm shrink-0">
+      {/* Persistent Navigation Header when browsing */}
+      {activeTab === 'browse' && browseLevel !== 'books' && selectedBook && (
+        <div className="p-3 bg-slate-900 text-white shrink-0 flex flex-col gap-2">
+          <div className="flex items-center justify-between">
+            <button 
+              onClick={() => setShowBookSelector(!showBookSelector)}
+              className="flex items-center gap-1 hover:bg-slate-800 px-2 py-1 rounded-lg transition-colors text-sm font-bold truncate max-w-[60%]"
+            >
+              <Book size={16} className="text-orange-400 shrink-0" />
+              <span className="truncate">{selectedBook.name}</span>
+              <ChevronDown size={14} className={cn("transition-transform", showBookSelector && "rotate-180")} />
+            </button>
+            <div className="flex items-center gap-1">
+              <button 
+                onClick={() => setShowChapterSelector(!showChapterSelector)}
+                className="flex items-center gap-1 hover:bg-slate-800 px-2 py-1 rounded-lg transition-colors text-sm font-bold whitespace-nowrap"
+              >
+                Cap. {selectedChapter || 1}
+                <ChevronDown size={14} className={cn("transition-transform", showChapterSelector && "rotate-180")} />
+              </button>
+            </div>
+          </div>
+
+          {/* Quick Book Selection Overlay */}
+          {showBookSelector && (
+            <div className="absolute inset-x-0 top-[110px] bottom-0 bg-white z-[60] overflow-y-auto p-4 custom-scrollbar">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-xs font-black text-slate-900 uppercase tracking-widest">Mudar Livro</h3>
+                <button onClick={() => setShowBookSelector(false)} className="text-slate-400 p-2"><X size={18} /></button>
+              </div>
+              <input
+                type="text"
+                placeholder="Filtrar livro..."
+                value={bookFilter}
+                onChange={(e) => setBookFilter(e.target.value)}
+                className="w-full pl-9 pr-4 py-2 mb-6 text-xs text-slate-900 border border-slate-100 bg-slate-50 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none"
+              />
+              <div className="space-y-6">
+                <div className="grid grid-cols-2 gap-2">
+                  {ALL_BOOKS.filter(b => b.name.toLowerCase().includes(bookFilter.toLowerCase())).map(book => (
+                    <button
+                      key={book.key}
+                      onClick={() => handleBookSelect(book)}
+                      className={cn(
+                        "text-left px-3 py-2 text-xs font-bold rounded-lg transition-all truncate",
+                        selectedBook.key === book.key ? "bg-orange-600 text-white" : "bg-slate-50 text-slate-700 hover:bg-slate-100"
+                      )}
+                    >
+                      {book.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Quick Chapter Selection Overlay */}
+          {showChapterSelector && (
+             <div className="absolute inset-x-0 top-[110px] bottom-0 bg-white z-[60] overflow-y-auto p-4 custom-scrollbar">
+               <div className="flex items-center justify-between mb-4">
+                <h3 className="text-xs font-black text-slate-900 uppercase tracking-widest">Capítulos de {selectedBook.name}</h3>
+                <button onClick={() => setShowChapterSelector(false)} className="text-slate-400 p-2"><X size={18} /></button>
+              </div>
+              <div className="grid grid-cols-5 gap-2">
+                {Array.from({ length: selectedBook.chapters }, (_, i) => i + 1).map(chap => (
+                  <button
+                    key={chap}
+                    onClick={() => handleChapterSelect(chap)}
+                    className={cn(
+                      "aspect-square flex items-center justify-center text-sm font-black rounded-xl transition-all shadow-sm",
+                      selectedChapter === chap ? "bg-orange-600 text-white" : "bg-slate-50 text-slate-600 hover:bg-slate-100"
+                    )}
+                  >
+                    {chap}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Top Search/Filter Area */}
+      <div className="p-4 bg-white border-b border-slate-100 shrink-0">
         {activeTab === 'search' ? (
           <form onSubmit={searchBible} className="relative">
             <input
               type="text"
-              placeholder="Ex: João 3:16 ou Rm 8:28"
+              placeholder="Ex: João 3:16 ou Amor"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              className="w-full pl-9 pr-4 py-2.5 text-sm border border-slate-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none transition-all"
+              className="w-full pl-9 pr-4 py-2.5 text-sm border border-slate-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none transition-all shadow-inner"
             />
             <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
           </form>
-        ) : (
+        ) : browseLevel === 'books' ? (
           <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 overflow-hidden">
-                <Book size={18} className="text-orange-500 shrink-0" />
-                <span className="text-sm font-bold text-slate-700 truncate">
-                  {browseLevel === 'books' ? 'Livros da Bíblia' : selectedBook?.name}
-                  {selectedChapter && browseLevel !== 'chapters' && ` • Cap ${selectedChapter}`}
-                </span>
-              </div>
-              {browseLevel !== 'books' && (
-                <button 
-                  onClick={browseLevel === 'verses' ? backToChapters : resetBrowse}
-                  className="text-[10px] font-bold text-white bg-slate-900 hover:bg-slate-800 px-3 py-1.5 rounded-lg transition-colors uppercase tracking-wider"
-                >
-                  Voltar
-                </button>
-              )}
+            <div className="flex items-center gap-2">
+              <Book size={18} className="text-orange-500 shrink-0" />
+              <span className="text-xs font-black text-slate-900 uppercase tracking-widest">Livros da Bíblia</span>
             </div>
-            
-            {browseLevel === 'books' && (
-              <div className="relative">
-                <input
-                  type="text"
-                  placeholder="Filtrar livro..."
-                  value={bookFilter}
-                  onChange={(e) => setBookFilter(e.target.value)}
-                  className="w-full pl-9 pr-4 py-2 text-xs border border-slate-100 bg-slate-50 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none transition-all"
-                />
-                <Search size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-              </div>
-            )}
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="Filtrar livro..."
+                value={bookFilter}
+                onChange={(e) => setBookFilter(e.target.value)}
+                className="w-full pl-9 pr-4 py-2 text-xs border border-slate-100 bg-slate-50 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none"
+              />
+              <Search size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            </div>
+          </div>
+        ) : (
+          <div className="flex items-center justify-between">
+            <button 
+               onClick={resetBrowse}
+               className="flex items-center gap-1 text-[10px] font-black text-slate-500 hover:text-orange-600 uppercase tracking-widest transition-colors"
+            >
+              <ChevronLeft size={16} /> Voltar aos Livros
+            </button>
+            <div className="flex items-center gap-1">
+              <button 
+                onClick={goToPrevChapter}
+                className="p-1.5 hover:bg-slate-100 rounded-md text-slate-500 transition-colors"
+                title="Capítulo Anterior"
+              >
+                <ChevronLeft size={18} />
+              </button>
+              <button 
+                onClick={goToNextChapter}
+                className="p-1.5 hover:bg-slate-100 rounded-md text-slate-500 transition-colors"
+                title="Próximo Capítulo"
+              >
+                <ChevronRight size={18} />
+              </button>
+            </div>
           </div>
         )}
       </div>
 
-      <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
+      <div id="bible-content-area" className="flex-1 overflow-y-auto p-4 custom-scrollbar bg-white">
         {loading ? (
           <div className="flex flex-col items-center justify-center py-20 text-slate-400">
             <Loader2 size={32} className="animate-spin mb-4 text-orange-500" />
@@ -302,6 +431,22 @@ export default function BibleSearch({ onAddVerse }: BibleSearchProps) {
                           </div>
                         </div>
                       ))}
+
+                      {/* Bottom Navigation */}
+                      <div className="flex items-center justify-between pt-8 pb-12 border-t border-slate-100">
+                        <button 
+                          onClick={goToPrevChapter}
+                          className="flex items-center gap-2 px-4 py-2 text-xs font-bold text-slate-600 hover:text-orange-600 transition-all border border-slate-200 rounded-xl hover:border-orange-500"
+                        >
+                          <ChevronLeft size={16} /> Cap. Anterior
+                        </button>
+                        <button 
+                          onClick={goToNextChapter}
+                          className="flex items-center gap-2 px-4 py-2 text-xs font-bold text-slate-600 hover:text-orange-600 transition-all border border-slate-200 rounded-xl hover:border-orange-500"
+                        >
+                          Próximo Cap. <ChevronRight size={16} />
+                        </button>
+                      </div>
                     </div>
                   </div>
                 )}
