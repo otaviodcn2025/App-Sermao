@@ -37,7 +37,11 @@ import {
   Undo,
   Redo,
   ChevronDown,
-  FileDown
+  FileDown,
+  Lightbulb,
+  Zap,
+  BookOpen,
+  MessageSquare
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { cn } from '@/src/lib/utils';
@@ -104,6 +108,23 @@ export default function Editor({ content, onChange, onAiAction, title, onTitleCh
       // @ts-ignore
       editor.chain().focus().setLink({ href: url }).run();
     }
+  };
+
+  const insertSpecialBlock = (type: 'illustration' | 'application' | 'exegese') => {
+    const configs = {
+      illustration: { label: 'ILUSTRAÇÃO', color: 'amber' },
+      application: { label: 'APLICAÇÃO', color: 'emerald' },
+      exegese: { label: 'EXEGESE', color: 'blue' }
+    };
+    const { label, color } = configs[type];
+    
+    // Using simple HTML structure that Tiptap StarterKit usually handles well
+    // We'll use blockquotes or just styled paragraphs if allowed
+    editor.chain().focus().insertContent(`
+      <blockquote>
+        <p><strong>${label}:</strong> Digite aqui sua ${type === 'illustration' ? 'ilustração' : type === 'application' ? 'aplicação prática' : 'análise exegética'}...</p>
+      </blockquote>
+    `).run();
   };
 
   return (
@@ -288,6 +309,33 @@ export default function Editor({ content, onChange, onAiAction, title, onTitleCh
             title="Linha Horizontal"
           >
             <Minus size={16} />
+          </button>
+        </div>
+
+        <div className="flex items-center gap-0.5 px-1 bg-orange-50/50 rounded-lg mx-1 border border-orange-100">
+          <button
+            onClick={() => insertSpecialBlock('illustration')}
+            className="flex items-center gap-1 px-2 py-1.5 rounded hover:bg-amber-100 text-amber-700 transition-all text-[10px] font-black uppercase tracking-wider"
+            title="Inserir Ilustração"
+          >
+            <Lightbulb size={14} className="text-amber-500" />
+            <span className="hidden lg:inline">Ilustração</span>
+          </button>
+          <button
+            onClick={() => insertSpecialBlock('application')}
+            className="flex items-center gap-1 px-2 py-1.5 rounded hover:bg-emerald-100 text-emerald-700 transition-all text-[10px] font-black uppercase tracking-wider"
+            title="Inserir Aplicação"
+          >
+            <Zap size={14} className="text-emerald-500" />
+            <span className="hidden lg:inline">Aplicação</span>
+          </button>
+          <button
+            onClick={() => insertSpecialBlock('exegese')}
+            className="flex items-center gap-1 px-2 py-1.5 rounded hover:bg-blue-100 text-blue-700 transition-all text-[10px] font-black uppercase tracking-wider"
+            title="Inserir Exegese"
+          >
+            <BookOpen size={14} className="text-blue-500" />
+            <span className="hidden lg:inline">Exegese</span>
           </button>
         </div>
 

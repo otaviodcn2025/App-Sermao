@@ -248,6 +248,43 @@ export default function BibleSearch({ onAddVerse }: BibleSearchProps) {
     }
   };
 
+  const THEOLOGICAL_TERMS: Record<string, { color: string, note: string }> = {
+    'graça': { color: 'text-orange-600 bg-orange-50 px-1 rounded', note: 'Favor imerecido de Deus.' },
+    'fé': { color: 'text-blue-600 bg-blue-50 px-1 rounded', note: 'Certeza das coisas que se esperam.' },
+    'justificação': { color: 'text-emerald-600 bg-emerald-50 px-1 rounded', note: 'Ato judicial de Deus declarando o pecador justo.' },
+    'redenção': { color: 'text-purple-600 bg-purple-50 px-1 rounded', note: 'Libertação mediante o pagamento de um resgate.' },
+    'santificação': { color: 'text-amber-600 bg-amber-50 px-1 rounded', note: 'Processo de ser tornado santo.' },
+    'pecado': { color: 'text-red-600 bg-red-50 px-1 rounded', note: 'Errar o alvo; transgressão da lei de Deus.' },
+    'salvação': { color: 'text-cyan-600 bg-cyan-50 px-1 rounded', note: 'Livramento do julgamento de Deus.' },
+    'evangelho': { color: 'text-rose-600 bg-rose-50 px-1 rounded', note: 'Boas novas de Jesus Cristo.' },
+    'messias': { color: 'text-indigo-600 bg-indigo-50 px-1 rounded', note: 'O Ungido de Deus.' }
+  };
+
+  const renderVerseText = (text: string) => {
+    if (!text) return null;
+    
+    // Split by words but keep punctuation
+    const words = text.split(/(\s+)/);
+    
+    return words.map((word, i) => {
+      const cleanWord = word.toLowerCase().replace(/[.,!?;:()]/g, '');
+      const term = THEOLOGICAL_TERMS[cleanWord];
+      
+      if (term) {
+        return (
+          <span 
+            key={i} 
+            className={cn("cursor-help transition-all hover:scale-105 inline-block", term.color)}
+            title={term.note}
+          >
+            {word}
+          </span>
+        );
+      }
+      return word;
+    });
+  };
+
   return (
     <div className="flex flex-col flex-1 h-full min-h-0 bg-slate-50 relative overflow-hidden">
       {/* Tabs */}
@@ -427,7 +464,7 @@ export default function BibleSearch({ onAddVerse }: BibleSearchProps) {
                       <span className="text-[10px] font-black text-orange-400 mt-1 shrink-0 bg-slate-50 w-7 h-7 flex items-center justify-center rounded-lg">{v.verse}</span>
                       <div className="flex-1 space-y-3">
                         <p className="text-sm text-slate-700 leading-relaxed font-medium">
-                          {v.text.trim()}
+                          {renderVerseText(v.text)}
                         </p>
                         <div className="flex justify-end pt-2 opacity-0 group-hover:opacity-100 transition-opacity">
                           <button 
@@ -477,7 +514,7 @@ export default function BibleSearch({ onAddVerse }: BibleSearchProps) {
                           <span className="text-[10px] font-black text-orange-400 tracking-widest uppercase">{v.book_name} {v.chapter}:{v.verse}</span>
                         </div>
                         <p className="text-sm text-slate-700 leading-relaxed font-medium">
-                          {v.text.trim()}
+                          {renderVerseText(v.text)}
                         </p>
                         <div className="flex justify-end pt-2 opacity-0 group-hover:opacity-100 transition-opacity">
                           <button 
