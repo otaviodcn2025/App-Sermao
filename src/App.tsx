@@ -48,6 +48,7 @@ import {
 
 import PresentationMode from './components/PresentationMode';
 import AdminPanel from './components/AdminPanel';
+import AiOutlineModal from './components/AiOutlineModal';
 
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
@@ -61,6 +62,7 @@ export default function App() {
   const [isBibleSearchOpen, setIsBibleSearchOpen] = useState(false); 
   const [isAiLoading, setIsAiLoading] = useState(false);
   const [aiResponse, setAiResponse] = useState<string | null>(null);
+  const [isAiModalOpen, setIsAiModalOpen] = useState(false);
   const [mobileTab, setMobileTab] = useState<'list' | 'editor' | 'bible'>('editor');
 
   // Initialize responsive state
@@ -313,16 +315,14 @@ export default function App() {
     }
   };
 
-  const handleGenerateOutlineFromTheme = async () => {
-    const theme = prompt('Qual o tema ou versículo base para o seu sermão?');
-    if (!theme) return;
-
+  const handleGenerateOutline = async (theme: string, baseText: string, fileContent: string, userIdeias: string) => {
     setIsAiLoading(true);
     setAiResponse(null);
     try {
-      const outline = await generateSermonOutline(theme);
+      const outline = await generateSermonOutline(theme, baseText, fileContent, userIdeias);
       if (outline) {
         setAiResponse(outline);
+        setIsAiModalOpen(false);
       }
     } catch (err) {
       console.error(err);
@@ -330,6 +330,10 @@ export default function App() {
     } finally {
       setIsAiLoading(false);
     }
+  };
+
+  const handleGenerateOutlineFromTheme = async () => {
+    setIsAiModalOpen(true);
   };
 
   if (!auth || !db) {
@@ -409,6 +413,17 @@ export default function App() {
           <PresentationMode 
             sermon={currentSermon} 
             onClose={() => setIsPresenting(false)} 
+          />
+        )}
+      </AnimatePresence>
+
+      {/* AI Outline Modal */}
+      <AnimatePresence>
+        {isAiModalOpen && (
+          <AiOutlineModal
+            onClose={() => setIsAiModalOpen(false)}
+            onGenerate={handleGenerateOutline}
+            isLoading={isAiLoading}
           />
         )}
       </AnimatePresence>

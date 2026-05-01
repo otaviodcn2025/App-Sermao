@@ -26,12 +26,27 @@ Responda sempre em Português (Brasil) de forma clara e inspiradora.`;
 
 const DEFAULT_MODEL = "gemini-3-flash-preview"; 
 
-export async function generateSermonOutline(topic: string, baseText?: string) {
+export async function generateSermonOutline(topic: string, baseText?: string, context?: string, userPrompt?: string) {
   try {
     const ai = getAIClient();
     if (!ai) throw new Error("IA não disponível. Verifique se a Chave de API foi configurada corretamente.");
     
-    const prompt = `Gere um esboço estruturado e inspirador para um sermão sobre o tema "${topic}"${baseText ? ` baseado no texto bíblico: ${baseText}` : ''}. O esboço deve ser rico em conteúdo e incluir:
+    const prompt = `Gere um esboço estruturado e inspirador para um sermão sobre o tema "${topic}"${baseText ? ` baseado no texto bíblico: ${baseText}` : ''}.
+    
+    ${userPrompt ? `DIRECIONAMENTO ESPECÍFICO DO USUÁRIO (SIGA ESTAS INSTRUÇÕES):
+    ---
+    ${userPrompt}
+    ---
+    ` : ''}
+
+    ${context ? `UTILIZE AS INFORMAÇÕES ABAIXO COMO REFERÊNCIA E CONTEXTO ADICIONAL (BANCO DE DADOS DO USUÁRIO):
+    ---
+    ${context}
+    ---
+    
+    Tente manter o estilo das informações acima se elas forem sermões ou notas pessoais.` : ''}
+
+    O esboço deve ser rico em conteúdo e incluir:
     - Título Sugerido (Impactante)
     - Introdução (Gancho forte)
     - Exposição Bíblica (3 a 4 pontos principais com explicações e verdades centrais)
