@@ -79,13 +79,79 @@ export default function BibleSearch({ onAddVerse }: BibleSearchProps) {
 
   const searchBible = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!query) return;
+    if (!query || query.trim().length < 3) return;
 
     setLoading(true);
     setError(null);
     try {
-      // Bolls Life API search: search/{translation}/{search_term}/
-      const res = await fetch(`https://bolls.life/search/${VERSION}/${encodeURIComponent(query)}/`);
+      const q = query.trim();
+      
+      // 1. Try to detect if it's just a book name
+      const bookOnly = ALL_BOOKS.find(b => 
+        b.name.toLowerCase() === q.toLowerCase() || 
+        b.abbrev.toLowerCase() === q.toLowerCase() ||
+        b.key.toLowerCase() === q.toLowerCase()
+      );
+      
+      if (bookOnly) {
+        handleBookClick(bookOnly);
+        setLoading(false);
+        return;
+      }
+
+      // 2. Try to detect if it's a reference (e.g. "John 3:16" or "Joao 3")
+      // Match "1 João 5", "Salmos 23", "Jo 3:16", etc.
+      const refMatch = q.match(/^([1-3]?\s?[a-zA-ZáéíóúÁÉÍÓÚçÇ]+)\s*(\d+)(?::(\d+))?$/i);
+      
+      if (refMatch) {
+        const bookName = refMatch[1].trim();
+        const chapter = parseInt(refMatch[2]);
+        const verse = refMatch[3] ? parseInt(refMatch[3]) : null;
+
+        const book = ALL_BOOKS.find(b => 
+          b.name.toLowerCase() === bookName.toLowerCase() || 
+          b.abbrev.toLowerCase() === bookName.toLowerCase() ||
+          b.key.toLowerCase() === bookName.toLowerCase()
+        );
+
+        if (book) {
+          if (verse) {
+            // Fetch specific verse
+            const res = await fetch(`https://bolls.life/get-verse/${VERSION}/${book.id}/${chapter}/${verse}/`);
+            if (res.ok) {
+              const data = await res.json();
+              const adaptedResult: BibleResponse = {
+                reference: `${book.name} ${chapter}:${verse}`,
+                verses: [{
+                  book_name: book.name,
+                  chapter: chapter,
+                  verse: verse,
+                  text: data.text
+                }],
+                text: data.text,
+                translation_id: VERSION,
+                translation_name: 'NVI',
+                translation_note: ''
+              };
+              setResult(adaptedResult);
+              setActiveTab('search');
+              setLoading(false);
+              return;
+            }
+          } else {
+            // CHAPTER REFERENCE: Navigate to chapter in browse tab
+            setSelectedBook(book);
+            setSelectedChapter(chapter);
+            loadChapter(book, chapter);
+            setActiveTab('browse');
+            setLoading(false);
+            return;
+          }
+        }
+      }
+
+      // 3. Keyword search
+      const res = await fetch(`https://bolls.life/search/${VERSION}/${encodeURIComponent(q)}/`);
 
       if (!res.ok) {
         throw new Error('Termo não encontrado ou erro na busca.');
@@ -161,7 +227,7 @@ export default function BibleSearch({ onAddVerse }: BibleSearchProps) {
   };
 
   return (
-    <div className="flex flex-col flex-1 min-h-0 bg-slate-50 relative overflow-hidden">
+    <div className="flex flex-col h-full bg-slate-50 relative overflow-hidden">
       {/* Tabs */}
       <div className="flex border-b border-slate-200 bg-white shrink-0 z-20">
         <button
@@ -231,22 +297,30 @@ export default function BibleSearch({ onAddVerse }: BibleSearchProps) {
           </div>
         ) : (
           <div className="p-3">
-            <form onSubmit={searchBible} className="relative">
-              <input
-                type="text"
-                placeholder="Ex: João 3:16 ou Amor"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                className="w-full pl-9 pr-4 py-2 text-sm border border-slate-200 rounded-xl focus:ring-2 focus:ring-orange-500/20 outline-none"
-              />
-              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            <form onSubmit={searchBible} className="flex gap-2">
+              <div className="relative flex-1">
+                <input
+                  type="text"
+                  placeholder="Ex: João 3:16 ou Amor"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  className="w-full pl-9 pr-4 py-2 text-sm border border-slate-200 rounded-xl focus:ring-2 focus:ring-orange-500/20 outline-none"
+                />
+                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              </div>
+              <button 
+                type="submit"
+                className="bg-orange-600 text-white px-3 py-2 rounded-xl text-xs font-bold hover:bg-orange-700 transition-colors shrink-0"
+              >
+                Buscar
+              </button>
             </form>
           </div>
         )}
       </div>
 
       {/* Main Scrollable Area */}
-      <div id="bible-content-area" className="flex-1 overflow-y-auto bg-slate-50 scroll-smooth pb-20 touch-pan-y bible-scrollbar">
+      <div id="bible-content-area" className="flex-1 overflow-y-auto bg-slate-50 scroll-smooth pb-32 bible-scrollbar overscroll-contain">
         {loading ? (
           <div className="flex flex-col items-center justify-center py-20 text-slate-400">
             <Loader2 size={32} className="animate-spin mb-4 text-orange-500" />
