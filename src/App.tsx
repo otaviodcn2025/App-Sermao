@@ -640,6 +640,7 @@ export default function App() {
                 onAiAction={handleAiAction}
                 onTitleChange={(title) => updateSermon({ title })}
                 title={currentSermon.title}
+                sermonId={currentSermonId}
               />
             ) : currentSermonId ? (
               <div className="h-[70vh] flex items-center justify-center">

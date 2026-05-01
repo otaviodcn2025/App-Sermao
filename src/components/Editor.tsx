@@ -13,7 +13,7 @@ import TableHeader from '@tiptap/extension-table-header';
 import TableCell from '@tiptap/extension-table-cell';
 import TaskList from '@tiptap/extension-task-list';
 import TaskItem from '@tiptap/extension-task-item';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { 
   Sparkles, 
   Heading1, 
@@ -36,6 +36,9 @@ import {
   Code,
   Undo,
   Redo,
+  Share2,
+  Copy,
+  Check,
   ChevronDown,
   FileDown,
   Lightbulb,
@@ -43,7 +46,7 @@ import {
   BookOpen,
   MessageSquare
 } from 'lucide-react';
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '@/src/lib/utils';
 import { exportToWord, exportToPdf } from '@/src/lib/export';
 
@@ -53,9 +56,14 @@ interface EditorProps {
   onAiAction: (action: string, selectedText: string) => void;
   title: string;
   onTitleChange: (title: string) => void;
+  sermonId?: string | null;
 }
 
-export default function Editor({ content, onChange, onAiAction, title, onTitleChange }: EditorProps) {
+export default function Editor({ content, onChange, onAiAction, title, onTitleChange, sermonId }: EditorProps) {
+  const [showShareMenu, setShowShareMenu] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
+
   const editor = useEditor({
     extensions: [
       StarterKit,
@@ -125,6 +133,34 @@ export default function Editor({ content, onChange, onAiAction, title, onTitleCh
         <p><strong>${label}:</strong> Digite aqui sua ${type === 'illustration' ? 'ilustração' : type === 'application' ? 'aplicação prática' : 'análise exegética'}...</p>
       </blockquote>
     `).run();
+  };
+
+  const handleCopyText = () => {
+    const text = editor.getText();
+    navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleShare = async () => {
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: `Sermão: ${title}`,
+          text: `Confira meu esboço de sermão: ${title}`,
+          url: window.location.href, // This will share the current app URL
+        });
+      } catch (err) {
+        console.log('Error sharing:', err);
+      }
+    } else {
+      // Fallback: Copy link
+      const url = window.location.href;
+      navigator.clipboard.writeText(url);
+      setLinkCopied(true);
+      setTimeout(() => setLinkCopied(false), 2000);
+      alert('Link copiado para a área de transferência!');
+    }
   };
 
   return (
@@ -340,6 +376,26 @@ export default function Editor({ content, onChange, onAiAction, title, onTitleCh
         </div>
 
         <div className="ml-auto flex items-center gap-1.5 px-1 border-l border-slate-200">
+          <button
+            onClick={handleCopyText}
+            className={cn(
+              "flex items-center gap-2 px-3 py-1.5 rounded-md transition-all text-xs font-bold shadow-sm",
+              copied ? "bg-emerald-50 text-emerald-600 border border-emerald-200" : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+            )}
+            title="Copiar Texto"
+          >
+            {copied ? <Check size={14} /> : <Copy size={14} />}
+            <span className="hidden sm:inline">{copied ? "Copiado!" : "Copiar"}</span>
+          </button>
+          <button
+            onClick={handleShare}
+            className="flex items-center gap-2 px-3 py-1.5 bg-orange-600 text-white rounded-md hover:bg-orange-700 transition-colors text-xs font-bold shadow-sm"
+            title="Compartilhar"
+          >
+            <Share2 size={14} />
+            <span className="hidden sm:inline">Compartilhar</span>
+          </button>
+          <div className="w-px h-6 bg-slate-200 mx-0.5" />
           <button
             onClick={() => exportToWord(title, editor.getHTML())}
             className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-xs font-bold shadow-sm"
