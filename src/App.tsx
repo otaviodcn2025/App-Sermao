@@ -728,18 +728,17 @@ export default function App() {
         }}
         transition={{ type: "spring", damping: 25, stiffness: 200 }}
         className={cn(
-          "flex flex-col bg-white z-[70] border-l border-slate-200",
-          "fixed top-0 bottom-16 right-0 lg:bottom-0 lg:relative lg:translate-x-0 overflow-hidden"
+          "flex flex-col bg-white z-[70] border-l border-slate-200 fixed top-0 bottom-16 right-0 lg:bottom-0 lg:relative lg:translate-x-0 overflow-hidden"
         )}
       >
-        <div className="flex-1 flex flex-col min-h-0 overflow-hidden h-full">
+        <div className="flex-1 flex flex-col min-h-0 h-full">
           <div className="p-4 lg:hidden border-b border-slate-100 flex items-center justify-between bg-white shrink-0">
             <h3 className="font-bold text-slate-800">Bíblia Sagrada</h3>
             <button onClick={() => setMobileTab('editor')} className="p-2 text-slate-400">
                <X size={20} />
             </button>
           </div>
-          <div className="flex-1 min-h-0 overflow-hidden">
+          <div className="flex-1 min-h-0">
             <BibleSearch onAddVerse={addVerseToEditor} />
           </div>
         </div>

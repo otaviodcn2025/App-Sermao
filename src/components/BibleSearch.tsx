@@ -38,7 +38,10 @@ export default function BibleSearch({ onAddVerse }: BibleSearchProps) {
     setError(null);
     try {
       // Bolls Life API: get-chapter/{translation}/{book_id}/{chapter}/
-      const res = await fetch(`https://bolls.life/get-chapter/${VERSION}/${book.id}/${chapter}/`);
+      const res = await fetch(`https://bolls.life/get-chapter/${VERSION}/${book.id}/${chapter}/`, {
+        mode: 'cors',
+        referrerPolicy: 'no-referrer'
+      });
       
       if (!res.ok) {
         throw new Error('Não foi possível carregar este capítulo.');
@@ -100,7 +103,6 @@ export default function BibleSearch({ onAddVerse }: BibleSearchProps) {
       }
 
       // 2. Try to detect if it's a reference (e.g. "John 3:16" or "Joao 3")
-      // Match "1 João 5", "Salmos 23", "Jo 3:16", etc.
       const refMatch = q.match(/^([1-3]?\s?[a-zA-ZáéíóúÁÉÍÓÚçÇ]+)\s*(\d+)(?::(\d+))?$/i);
       
       if (refMatch) {
@@ -116,30 +118,35 @@ export default function BibleSearch({ onAddVerse }: BibleSearchProps) {
 
         if (book) {
           if (verse) {
-            // Fetch specific verse
-            const res = await fetch(`https://bolls.life/get-verse/${VERSION}/${book.id}/${chapter}/${verse}/`);
-            if (res.ok) {
-              const data = await res.json();
-              const adaptedResult: BibleResponse = {
-                reference: `${book.name} ${chapter}:${verse}`,
-                verses: [{
-                  book_name: book.name,
-                  chapter: chapter,
-                  verse: verse,
-                  text: data.text
-                }],
-                text: data.text,
-                translation_id: VERSION,
-                translation_name: 'NVI',
-                translation_note: ''
-              };
-              setResult(adaptedResult);
-              setActiveTab('search');
-              setLoading(false);
-              return;
+            try {
+              const res = await fetch(`https://bolls.life/get-verse/${VERSION}/${book.id}/${chapter}/${verse}/`, {
+                mode: 'cors',
+                referrerPolicy: 'no-referrer'
+              });
+              if (res.ok) {
+                const data = await res.json();
+                const adaptedResult: BibleResponse = {
+                  reference: `${book.name} ${chapter}:${verse}`,
+                  verses: [{
+                    book_name: book.name,
+                    chapter: chapter,
+                    verse: verse,
+                    text: data.text
+                  }],
+                  text: data.text,
+                  translation_id: VERSION,
+                  translation_name: 'NVI',
+                  translation_note: ''
+                };
+                setResult(adaptedResult);
+                setActiveTab('search');
+                setLoading(false);
+                return;
+              }
+            } catch (e) {
+              console.error("Verse fetch failed, falling back to keyword", e);
             }
           } else {
-            // CHAPTER REFERENCE: Navigate to chapter in browse tab
             setSelectedBook(book);
             setSelectedChapter(chapter);
             loadChapter(book, chapter);
@@ -151,10 +158,21 @@ export default function BibleSearch({ onAddVerse }: BibleSearchProps) {
       }
 
       // 3. Keyword search
-      const res = await fetch(`https://bolls.life/search/${VERSION}/${encodeURIComponent(q)}/`);
+      // Note: Bolls.life search sometimes returns 403 if too many requests or specific referrers
+      const res = await fetch(`https://bolls.life/search/${VERSION}/${encodeURIComponent(q)}/`, {
+        mode: 'cors',
+        referrerPolicy: 'no-referrer',
+        headers: {
+          'Accept': 'application/json',
+        }
+      });
+
+      if (res.status === 403) {
+        throw new Error('Acesso negado pela API (403). Tente uma busca mais específica ou tente em instantes.');
+      }
 
       if (!res.ok) {
-        throw new Error('Termo não encontrado ou erro na busca.');
+        throw new Error('Erro ao buscar. Tente novamente.');
       }
 
       const data = await res.json();
@@ -320,7 +338,7 @@ export default function BibleSearch({ onAddVerse }: BibleSearchProps) {
       </div>
 
       {/* Main Scrollable Area */}
-      <div id="bible-content-area" className="flex-1 overflow-y-auto bg-slate-50 scroll-smooth pb-32 bible-scrollbar overscroll-contain">
+      <div id="bible-content-area" className="flex-1 overflow-y-auto bg-slate-50 scroll-smooth pb-40 bible-scrollbar overscroll-contain min-h-0 touch-pan-y">
         {loading ? (
           <div className="flex flex-col items-center justify-center py-20 text-slate-400">
             <Loader2 size={32} className="animate-spin mb-4 text-orange-500" />
