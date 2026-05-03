@@ -107,7 +107,9 @@ service cloud.firestore {
                data.createdAt is number &&
                // Optional fields validation
                (!('lastReadPosition' in data) || data.lastReadPosition is number) &&
-               (!('highlights' in data) || data.highlights is list);
+               (!('highlights' in data) || data.highlights is list) &&
+               (!('extractedText' in data) || data.extractedText is string) &&
+               (!('summary' in data) || data.summary is string);
       }
 
       allow list: if (isApproved() || isAdmin()) && resource.data.userId == request.auth.uid;

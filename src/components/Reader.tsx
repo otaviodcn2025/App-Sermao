@@ -86,11 +86,7 @@ export default function Reader({ resource, onClose, onUpdatePosition, onAddHighl
     };
 
     const start = getSelectionOffset(range.startContainer, range.startOffset, contentRef.current);
-    const text = activeSelection.toString();
-
-    // The logic below identifies if the selection started inside an element that was rendered 
-    // before the actual extracted text, but we only want selection within the renderContent div.
-    // Let's refine the container for offset calculation.
+    const text = range.toString();
 
     if (text.trim().length > 0) {
       setSelection({
