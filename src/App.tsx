@@ -20,8 +20,7 @@ import {
   User as UserIcon,
   X,
   List,
-  Book,
-  WifiOff
+  Book
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import Editor from './components/Editor';
@@ -71,20 +70,6 @@ export default function App() {
   const [mobileTab, setMobileTab] = useState<'list' | 'editor' | 'bible' | 'library'>('editor');
   const [currentView, setCurrentView] = useState<'editor' | 'library'>('editor');
   const [resources, setResources] = useState<Resource[]>([]);
-  const [isOffline, setIsOffline] = useState(typeof navigator !== 'undefined' ? !navigator.onLine : false);
-
-  // Monitor connectivity
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const handleOnline = () => setIsOffline(false);
-    const handleOffline = () => setIsOffline(true);
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
-    return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
-    };
-  }, []);
 
   // Initialize responsive state
   useEffect(() => {
@@ -353,10 +338,6 @@ export default function App() {
   };
 
   const handleAiAction = async (action: string, text: string) => {
-    if (isOffline) {
-      alert('Esta função requer conexão com a internet para acessar a IA.');
-      return;
-    }
     setIsAiLoading(true);
     setAiResponse(null);
     try {
@@ -389,10 +370,6 @@ export default function App() {
   };
 
   const handleGenerateOutline = async (theme: string, baseText: string, fileContent: string, userIdeias: string) => {
-    if (isOffline) {
-      alert('Esta função requer conexão com a internet.');
-      return;
-    }
     setIsAiLoading(true);
     setAiResponse(null);
     try {
@@ -418,10 +395,6 @@ export default function App() {
 
   const handleResourceUpload = async (file: File) => {
     if (!user || !db) return;
-    if (isOffline) {
-      alert('Aguarde a conexão voltar para enviar novos livros.');
-      return;
-    }
     
     try {
       const isPdf = file.name.toLowerCase().endsWith('.pdf');
@@ -605,21 +578,6 @@ export default function App() {
       </AnimatePresence>
 
       <div className="flex h-screen bg-slate-50 overflow-hidden font-sans relative pb-16 lg:pb-0">
-      {/* Offline Banner */}
-      <AnimatePresence>
-        {isOffline && (
-          <motion.div 
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            className="fixed top-0 inset-x-0 bg-amber-500 text-white text-[10px] font-black uppercase tracking-[0.2em] py-1 text-center z-[200] flex items-center justify-center gap-2"
-          >
-            <WifiOff size={12} />
-            Você está Offline • Modo de Leitura Ativado
-          </motion.div>
-        )}
-      </AnimatePresence>
-
       {/* Overlay for mobile sidebars */}
       <AnimatePresence>
         {(isSidebarOpen || isBibleSearchOpen) && (typeof window !== 'undefined' && window.innerWidth < 1024) && (
