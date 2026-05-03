@@ -29,7 +29,8 @@ type Theme = 'light' | 'sepia' | 'dark';
 type FontFace = 'serif' | 'sans' | 'mono';
 
 export default function Reader({ resource, onClose, onUpdatePosition }: ReaderProps) {
-  const [fontSize, setFontSize] = useState(18);
+  const [fontSize, setFontSize] = useState(20);
+  const [lineHeight, setLineHeight] = useState(1.6);
   const [theme, setTheme] = useState<Theme>('sepia');
   const [fontFace, setFontFace] = useState<FontFace>('serif');
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -214,28 +215,34 @@ export default function Reader({ resource, onClose, onUpdatePosition }: ReaderPr
       <div 
         ref={scrollContainerRef}
         onScroll={handleScroll}
-        className="flex-1 overflow-y-auto px-6 py-24 md:py-32 scroll-smooth"
+        className="flex-1 overflow-y-auto px-6 py-24 md:py-40 scroll-smooth"
       >
         <div 
           className={cn(
-            "max-w-prose mx-auto leading-relaxed transition-all duration-300 text-justify",
+            "max-w-3xl mx-auto transition-all duration-300 text-justify break-words hyphens-auto",
             fonts[fontFace],
             currentTheme.text
           )}
-          style={{ fontSize: `${fontSize}px` }}
+          style={{ 
+            fontSize: `${fontSize}px`,
+            lineHeight: lineHeight
+          }}
         >
-          <div className="mb-12 text-center opacity-50">
-            <BookOpen size={48} className="mx-auto mb-4" />
-            <h1 className="text-3xl font-black">{resource.title}</h1>
-            <p className="text-sm mt-2">{new Date(resource.createdAt).getFullYear()}</p>
+          <div className="mb-24 text-center opacity-50">
+            <BookOpen size={64} className="mx-auto mb-6 text-orange-500/50" />
+            <h1 className="text-4xl font-black tracking-tighter leading-tight">{resource.title}</h1>
+            <p className="text-sm mt-4 font-bold uppercase tracking-[0.2em]">Recurso Pastoral</p>
           </div>
           
-          <div className="whitespace-pre-wrap select-text">
+          <div className="whitespace-pre-wrap select-text selection:bg-orange-200 selection:text-orange-950">
             {resource.extractedText}
           </div>
 
-          <div className="mt-24 pt-12 border-t border-black/5 text-center text-xs opacity-40 italic">
-            Fim do documento. Conteúdo processado por IA Pastoral.
+          <div className="mt-32 pt-16 border-t border-black/5 text-center">
+            <div className="text-2xl opacity-20 mb-4">❖</div>
+            <p className="text-[10px] uppercase tracking-widest font-black opacity-30">
+              Fim da Leitura • Processado por IA Pastoral
+            </p>
           </div>
         </div>
       </div>
@@ -248,53 +255,80 @@ export default function Reader({ resource, onClose, onUpdatePosition }: ReaderPr
         />
       </div>
 
-      {/* Bottom Floating Controls (Font & Size) */}
+      {/* Bottom Floating Controls (Font, Size & Line Height) */}
       <AnimatePresence>
         {showControls && (
           <motion.div 
-            initial={{ y: 100 }}
-            animate={{ y: 0 }}
-            exit={{ y: 100 }}
-            className="absolute bottom-8 inset-x-0 flex justify-center z-10"
+            initial={{ y: 100, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 100, opacity: 0 }}
+            className="absolute bottom-8 inset-x-0 flex justify-center z-10 px-4"
             onClick={(e) => e.stopPropagation()}
           >
             <div className={cn(
-              "flex items-center gap-6 px-8 py-3 rounded-2xl shadow-2xl border backdrop-blur-xl",
+              "flex flex-col md:flex-row items-center gap-4 md:gap-8 px-6 py-4 rounded-[2.5rem] shadow-2xl border backdrop-blur-2xl transition-colors duration-500",
               currentTheme.ui
             )}>
               {/* Font Family */}
-              <div className="flex gap-2">
+              <div className="flex bg-black/5 p-1 rounded-2xl">
                 <button 
                   onClick={() => setFontFace('serif')}
-                  className={cn("px-2 py-1 rounded text-xs font-black", fontFace === 'serif' && currentTheme.accent)}
+                  className={cn("px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all", fontFace === 'serif' ? (currentTheme.accent + " shadow-sm") : "opacity-50")}
                 >
                   Serif
                 </button>
                 <button 
                   onClick={() => setFontFace('sans')}
-                  className={cn("px-2 py-1 rounded text-xs font-black", fontFace === 'sans' && currentTheme.accent)}
+                  className={cn("px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all", fontFace === 'sans' ? (currentTheme.accent + " shadow-sm") : "opacity-50")}
                 >
                   Sans
                 </button>
               </div>
 
-              <div className="w-px h-6 bg-black/10" />
+              <div className="hidden md:block w-px h-8 bg-black/10" />
 
-              {/* Font Size */}
-              <div className="flex items-center gap-4">
-                <button 
-                  onClick={() => setFontSize(Math.max(12, fontSize - 1))}
-                  className="p-1 hover:bg-black/5 rounded"
-                >
-                  <Minus size={18} />
-                </button>
-                <span className="text-xs font-black w-8 text-center">{fontSize}px</span>
-                <button 
-                  onClick={() => setFontSize(Math.min(32, fontSize + 1))}
-                  className="p-1 hover:bg-black/5 rounded"
-                >
-                  <Plus size={18} />
-                </button>
+              <div className="flex items-center gap-8">
+                {/* Font Size */}
+                <div className="flex items-center gap-3">
+                  <button 
+                    onClick={() => setFontSize(Math.max(12, fontSize - 2))}
+                    className="w-8 h-8 flex items-center justify-center hover:bg-black/5 rounded-full transition-colors border border-black/5"
+                  >
+                    <Minus size={14} />
+                  </button>
+                  <div className="flex flex-col items-center min-w-[40px]">
+                    <span className="text-[10px] font-black uppercase tracking-tighter opacity-40">Fonte</span>
+                    <span className="text-xs font-black">{fontSize}</span>
+                  </div>
+                  <button 
+                    onClick={() => setFontSize(Math.min(48, fontSize + 2))}
+                    className="w-8 h-8 flex items-center justify-center hover:bg-black/5 rounded-full transition-colors border border-black/5"
+                  >
+                    <Plus size={14} />
+                  </button>
+                </div>
+
+                <div className="w-px h-6 bg-black/10" />
+
+                {/* Line Height */}
+                <div className="flex items-center gap-3">
+                  <button 
+                    onClick={() => setLineHeight(Math.max(1.2, lineHeight - 0.1))}
+                    className="w-8 h-8 flex items-center justify-center hover:bg-black/5 rounded-full transition-colors border border-black/5"
+                  >
+                    <Minus size={14} />
+                  </button>
+                  <div className="flex flex-col items-center min-w-[40px]">
+                    <span className="text-[10px] font-black uppercase tracking-tighter opacity-40">Espaço</span>
+                    <span className="text-xs font-black">{lineHeight.toFixed(1)}</span>
+                  </div>
+                  <button 
+                    onClick={() => setLineHeight(Math.min(2.4, lineHeight + 0.1))}
+                    className="w-8 h-8 flex items-center justify-center hover:bg-black/5 rounded-full transition-colors border border-black/5"
+                  >
+                    <Plus size={14} />
+                  </button>
+                </div>
               </div>
             </div>
           </motion.div>
