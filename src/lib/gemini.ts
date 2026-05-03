@@ -130,8 +130,19 @@ export async function generateSlideDescriptions(sermonContent: string) {
     const ai = getAIClient();
     if (!ai) throw new Error("IA não disponível.");
 
-    const prompt = `Com base no sermão abaixo, crie um plano de 6-8 slides. Para cada slide forneça: Título, Texto Principal e Descrição Visual para imagem.
+    const prompt = `Com base no sermão abaixo, crie um plano de 6-8 slides para uma apresentação PowerPoint. 
     
+    IMPORTANTE: Formate sua resposta EXATAMENTE como no exemplo abaixo para permitir o processamento automático:
+
+    Slide 1
+    Título: [Título Curto do Slide]
+    Texto Principal: [Texto conciso em tópicos]
+    Descrição Visual: [Sugestão de imagem para o fundo ou ilustração]
+
+    Slide 2
+    Título: ...
+    e assim por diante.
+
     Sermão:
     ${sermonContent}`;
 

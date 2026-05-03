@@ -20,15 +20,17 @@ import {
   User as UserIcon,
   X,
   List,
-  Book
+  Book,
+  Download
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import Editor from './components/Editor';
 import BibleSearch from './components/BibleSearch';
 import Auth from './components/Auth';
 import { Sermon, UserProfile, Resource } from './types';
-import { cn, formatDate } from './lib/utils';
+import { cn, formatDate, parseSlides } from './lib/utils';
 import { generateSermonOutline, analyzeVerse, generateSlideDescriptions, summarizeResource } from './lib/gemini';
+import { generatePowerPoint } from './lib/pptx';
 import { auth, db, handleFirestoreError, OperationType } from './lib/firebase';
 import { extractTextFromPdf } from './lib/pdf';
 import { extractTextFromEpub } from './lib/epub';
@@ -65,6 +67,7 @@ export default function App() {
   const [isBibleSearchOpen, setIsBibleSearchOpen] = useState(false); 
   const [isAiLoading, setIsAiLoading] = useState(false);
   const [aiResponse, setAiResponse] = useState<string | null>(null);
+  const [aiActionType, setAiActionType] = useState<string | null>(null);
   const [isAiModalOpen, setIsAiModalOpen] = useState(false);
   const [sharedSermonData, setSharedSermonData] = useState<Sermon | null>(null);
   const [mobileTab, setMobileTab] = useState<'list' | 'editor' | 'bible' | 'library'>('editor');
@@ -340,6 +343,7 @@ export default function App() {
   const handleAiAction = async (action: string, text: string) => {
     setIsAiLoading(true);
     setAiResponse(null);
+    setAiActionType(action);
     try {
       // Feed reference content from library if available
       const referenceContent = resources.map(r => r.extractedText).filter(Boolean).join('\n\n---\n\n').substring(0, 15000); // Limit to safety
@@ -905,7 +909,23 @@ export default function App() {
               <div className="flex-1 overflow-y-auto p-6 prose prose-sm max-w-none prose-slate">
                 <div dangerouslySetInnerHTML={{ __html: aiResponse.replace(/\n/g, '<br/>') }} />
               </div>
-              <div className="p-4 border-top border-slate-100 bg-slate-50 flex justify-end">
+              <div className="p-4 border-top border-slate-100 bg-slate-50 flex justify-between gap-4">
+                 {aiActionType === 'slides' && (
+                   <button 
+                     onClick={async () => {
+                       const slides = parseSlides(aiResponse || '');
+                       if (slides.length > 0) {
+                         await generatePowerPoint(currentSermon?.title || 'Sermão', slides);
+                       } else {
+                         alert('Não foi possível identificar o formato dos slides para exportação.');
+                       }
+                     }}
+                     className="flex items-center gap-2 bg-slate-900 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-slate-800 transition-colors shadow-sm"
+                   >
+                     <Download size={16} />
+                     Baixar PowerPoint
+                   </button>
+                 )}
                  <button 
                   onClick={() => {
                     const newContent = (currentSermon?.content || '') + `<hr/><div class="ai-suggestion">${aiResponse.replace(/\n/g, '<br/>')}</div>`;
