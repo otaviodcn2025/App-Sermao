@@ -31,6 +31,7 @@ import { cn, formatDate } from './lib/utils';
 import { generateSermonOutline, analyzeVerse, generateSlideDescriptions, summarizeResource } from './lib/gemini';
 import { auth, db, handleFirestoreError, OperationType } from './lib/firebase';
 import { extractTextFromPdf } from './lib/pdf';
+import { extractTextFromEpub } from './lib/epub';
 import { onAuthStateChanged, signOut, User } from 'firebase/auth';
 import { 
   collection, 
@@ -396,7 +397,18 @@ export default function App() {
     if (!user || !db) return;
     
     try {
-      const text = await extractTextFromPdf(file);
+      const isPdf = file.name.toLowerCase().endsWith('.pdf');
+      const isEpub = file.name.toLowerCase().endsWith('.epub');
+
+      let text = '';
+      if (isPdf) {
+        text = await extractTextFromPdf(file);
+      } else if (isEpub) {
+        text = await extractTextFromEpub(file);
+      } else {
+        throw new Error('Formato de arquivo não suportado. Use PDF ou ePub.');
+      }
+
       setIsAiLoading(true);
       const summary = await summarizeResource(file.name, text);
       setIsAiLoading(false);
@@ -407,8 +419,8 @@ export default function App() {
       const resource: Resource = {
         id: newDoc.id,
         userId: user.uid,
-        title: file.name.replace('.pdf', ''),
-        type: 'pdf',
+        title: file.name.replace(/\.(pdf|epub)$/i, ''),
+        type: isPdf ? 'pdf' : 'epub',
         extractedText: text,
         summary: summary,
         createdAt: Date.now()
@@ -417,6 +429,8 @@ export default function App() {
       await setDoc(newDoc, resource);
     } catch (err) {
       setIsAiLoading(false);
+      const message = err instanceof Error ? err.message : 'Erro ao processar arquivo';
+      alert(message);
       handleFirestoreError(err, OperationType.CREATE, 'resources');
     }
   };

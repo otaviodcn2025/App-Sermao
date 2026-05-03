@@ -46,20 +46,19 @@ export default function Library({ resources, onUpload, onDelete, userApproved }:
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (file.type !== 'application/pdf') {
-      alert('Por favor, envie apenas arquivos PDF.');
-      return;
-    }
-
-    setIsUploading(true);
-    try {
-      await onUpload(file);
-      if (fileInputRef.current) fileInputRef.current.value = '';
-    } catch (error) {
-      console.error('Erro no upload:', error);
-      alert('Erro ao processar o PDF. Tente um arquivo menor ou verifique sua conexão.');
-    } finally {
-      setIsUploading(false);
+    if (file.name.toLowerCase().endsWith('.pdf') || file.name.toLowerCase().endsWith('.epub')) {
+      setIsUploading(true);
+      try {
+        await onUpload(file);
+        if (fileInputRef.current) fileInputRef.current.value = '';
+      } catch (error) {
+        console.error('Erro no upload:', error);
+        alert('Erro ao processar o arquivo. Verifique sua conexão.');
+      } finally {
+        setIsUploading(false);
+      }
+    } else {
+      alert('Por favor, envie apenas arquivos PDF ou ePub.');
     }
   };
 
@@ -167,7 +166,7 @@ export default function Library({ resources, onUpload, onDelete, userApproved }:
             type="file"
             ref={fileInputRef}
             onChange={handleFileChange}
-            accept=".pdf"
+            accept=".pdf,.epub"
             className="hidden"
           />
           {!userApproved && (
@@ -189,7 +188,7 @@ export default function Library({ resources, onUpload, onDelete, userApproved }:
             ) : (
               <Plus size={20} />
             )}
-            {isUploading ? "Processando..." : "Novo Livro (PDF)"}
+            {isUploading ? "Processando..." : "Novo Livro (PDF/ePub)"}
           </button>
         </div>
       </div>
@@ -223,7 +222,9 @@ export default function Library({ resources, onUpload, onDelete, userApproved }:
                 <div className="flex-1 min-w-0">
                   <h3 className="font-bold text-slate-800 truncate leading-tight mb-1">{resource.title}</h3>
                   <div className="flex items-center gap-2">
-                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">PDF</span>
+                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                      {resource.type === 'epub' ? 'ePub' : 'PDF'}
+                    </span>
                     <span className="w-1 h-1 bg-slate-200 rounded-full" />
                     {resource.lastReadPosition !== undefined && resource.lastReadPosition > 0 && (
                       <>
@@ -270,7 +271,7 @@ export default function Library({ resources, onUpload, onDelete, userApproved }:
           <div className="col-span-full py-20 flex flex-col items-center justify-center text-slate-400 bg-slate-50/50 border-2 border-dashed border-slate-200 rounded-[40px]">
             <Book size={48} className="mb-4 opacity-20" />
             <p className="font-bold text-slate-500">Sua biblioteca está vazia</p>
-            <p className="text-sm">Envie um PDF para começar sua coleção de consulta.</p>
+            <p className="text-sm">Envie um PDF ou ePub para começar sua coleção de consulta.</p>
           </div>
         )}
 

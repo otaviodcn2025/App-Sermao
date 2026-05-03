@@ -36,7 +36,7 @@
         "id": { "type": "string" },
         "userId": { "type": "string" },
         "title": { "type": "string" },
-        "type": { "type": "string", "enum": ["pdf", "link"] },
+        "type": { "type": "string", "enum": ["pdf", "link", "epub"] },
         "url": { "type": "string" },
         "extractedText": { "type": "string" },
         "summary": { "type": "string" },

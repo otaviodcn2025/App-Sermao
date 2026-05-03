@@ -36,7 +36,7 @@ export interface Resource {
   id: string;
   userId: string;
   title: string;
-  type: 'pdf' | 'link';
+  type: 'pdf' | 'link' | 'epub';
   url?: string;
   extractedText?: string;
   summary?: string;
