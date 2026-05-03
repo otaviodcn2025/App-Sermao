@@ -155,3 +155,39 @@ export async function generateSlideDescriptions(sermonContent: string) {
     throw new Error(error?.message || "Erro desconhecido na geração de slides.");
   }
 }
+
+export async function summarizeResource(title: string, content: string) {
+  try {
+    const ai = getAIClient();
+    if (!ai) throw new Error("IA não disponível.");
+
+    const prompt = `Você é um bibliotecário teológico especialista. 
+    Analise o texto extraído do livro/documento intitulado "${title}" e forneça um resumo estruturado e conciso.
+    
+    ESTRUTURA DESEJADA:
+    1. VISÃO GERAL: Do que trata o livro?
+    2. TEMAS PRINCIPAIS: Quais são os 3-5 pontos centrais?
+    3. ABORDAGEM TEOLÓGICA: Qual a linha de pensamento? (ex: reformada, arminiana, histórica, etc)
+    4. UTILIDADE HOMILÉTICA: Como este conteúdo pode ajudar na preparação de sermões?
+    
+    TEXTO PARA ANÁLISE:
+    ---
+    ${content.substring(0, 30000)}
+    ---
+    
+    Responda em Português (Brasil) com tom profissional e servil.`;
+
+    const response = await ai.models.generateContent({
+      model: DEFAULT_MODEL,
+      contents: prompt,
+      config: {
+        systemInstruction: SYSTEM_INSTRUCTION,
+      }
+    });
+
+    return response.text || "Não foi possível gerar um resumo automático para este recurso.";
+  } catch (error: any) {
+    console.error("Gemini Error (summarizeResource):", error);
+    return "Ocorreu um erro ao tentar gerar o resumo automático.";
+  }
+}

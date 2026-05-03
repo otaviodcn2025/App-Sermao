@@ -39,6 +39,7 @@
         "type": { "type": "string", "enum": ["pdf", "link"] },
         "url": { "type": "string" },
         "extractedText": { "type": "string" },
+        "summary": { "type": "string" },
         "createdAt": { "type": "number" }
       },
       "required": ["id", "userId", "title", "type", "createdAt"]

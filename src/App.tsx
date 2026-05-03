@@ -28,7 +28,7 @@ import BibleSearch from './components/BibleSearch';
 import Auth from './components/Auth';
 import { Sermon, UserProfile, Resource } from './types';
 import { cn, formatDate } from './lib/utils';
-import { generateSermonOutline, analyzeVerse, generateSlideDescriptions } from './lib/gemini';
+import { generateSermonOutline, analyzeVerse, generateSlideDescriptions, summarizeResource } from './lib/gemini';
 import { auth, db, handleFirestoreError, OperationType } from './lib/firebase';
 import { extractTextFromPdf } from './lib/pdf';
 import { onAuthStateChanged, signOut, User } from 'firebase/auth';
@@ -397,6 +397,10 @@ export default function App() {
     
     try {
       const text = await extractTextFromPdf(file);
+      setIsAiLoading(true);
+      const summary = await summarizeResource(file.name, text);
+      setIsAiLoading(false);
+
       const resourceRef = collection(db, 'resources');
       const newDoc = doc(resourceRef);
       
@@ -406,11 +410,13 @@ export default function App() {
         title: file.name.replace('.pdf', ''),
         type: 'pdf',
         extractedText: text,
+        summary: summary,
         createdAt: Date.now()
       };
       
       await setDoc(newDoc, resource);
     } catch (err) {
+      setIsAiLoading(false);
       handleFirestoreError(err, OperationType.CREATE, 'resources');
     }
   };

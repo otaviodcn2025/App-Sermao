@@ -39,5 +39,6 @@ export interface Resource {
   type: 'pdf' | 'link';
   url?: string;
   extractedText?: string;
+  summary?: string;
   createdAt: number;
 }

@@ -11,7 +11,8 @@ import {
   CheckCircle2,
   AlertCircle,
   Eye,
-  ChevronLeft
+  ChevronLeft,
+  Maximize2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '@/src/lib/utils';
@@ -21,6 +22,8 @@ import * as pdfjs from 'pdfjs-dist';
 // Configuração do Worker do PDF.js
 const PDFJS_VERSION = '3.11.174';
 pdfjs.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDFJS_VERSION}/pdf.worker.min.js`;
+
+import Reader from './Reader';
 
 interface LibraryProps {
   resources: Resource[];
@@ -33,6 +36,7 @@ export default function Library({ resources, onUpload, onDelete, userApproved }:
   const [isUploading, setIsUploading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedResource, setSelectedResource] = useState<Resource | null>(null);
+  const [isReadingMode, setIsReadingMode] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -60,23 +64,64 @@ export default function Library({ resources, onUpload, onDelete, userApproved }:
     r.title.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  if (selectedResource && isReadingMode) {
+    return (
+      <Reader 
+        resource={selectedResource} 
+        onClose={() => {
+          setIsReadingMode(false);
+          setSelectedResource(null);
+        }} 
+      />
+    );
+  }
+
   if (selectedResource) {
     return (
       <div className="flex flex-col h-full bg-white rounded-3xl shadow-xl overflow-hidden border border-slate-100">
-        <div className="p-4 border-b flex items-center gap-4 bg-slate-50">
-          <button 
-            onClick={() => setSelectedResource(null)}
-            className="p-2 hover:bg-white rounded-full transition-colors text-slate-600"
-          >
-            <ChevronLeft size={20} />
-          </button>
-          <div>
-            <h2 className="font-black text-slate-800 tracking-tight">{selectedResource.title}</h2>
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Modo de Leitura</p>
+        <div className="p-4 border-b flex items-center justify-between gap-4 bg-slate-50">
+          <div className="flex items-center gap-4">
+            <button 
+              onClick={() => setSelectedResource(null)}
+              className="p-2 hover:bg-white rounded-full transition-colors text-slate-600"
+            >
+              <ChevronLeft size={20} />
+            </button>
+            <div>
+              <h2 className="font-black text-slate-800 tracking-tight">{selectedResource.title}</h2>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Visão Geral</p>
+            </div>
           </div>
+          
+          <button
+            onClick={() => setIsReadingMode(true)}
+            className="flex items-center gap-2 px-6 py-2 bg-slate-900 text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-black transition-all shadow-lg shadow-slate-200"
+          >
+            <Maximize2 size={14} />
+            Modo Kindle
+          </button>
         </div>
         <div className="flex-1 overflow-y-auto p-6 lg:p-12">
           <div className="max-w-3xl mx-auto prose prose-slate">
+            {selectedResource.summary && (
+              <div className="mb-12 p-6 bg-orange-50 rounded-3xl border border-orange-100">
+                <div className="flex items-center gap-2 mb-4 text-orange-800">
+                  <div className="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center">
+                    <CheckCircle2 size={18} />
+                  </div>
+                  <h3 className="font-black text-sm uppercase tracking-widest">Resumo da IA Pastoral</h3>
+                </div>
+                <div className="text-slate-700 text-sm leading-relaxed whitespace-pre-wrap italic">
+                  {selectedResource.summary}
+                </div>
+              </div>
+            )}
+
+            <div className="flex items-center gap-2 mb-6">
+              <FileText size={18} className="text-slate-400" />
+              <h3 className="font-black text-sm uppercase tracking-widest text-slate-400">Conteúdo Extraído</h3>
+            </div>
+            
             {selectedResource.extractedText ? (
               <div className="whitespace-pre-wrap font-serif text-lg leading-relaxed text-slate-700">
                 {selectedResource.extractedText}
