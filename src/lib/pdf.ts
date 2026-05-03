@@ -1,21 +1,42 @@
 import * as pdfjs from 'pdfjs-dist';
 
-// Use a stable worker URL
-pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
+// Ensure the worker version matches the library exactly
+const PDFJS_VERSION = '3.11.174';
+pdfjs.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDFJS_VERSION}/pdf.worker.min.js`;
 
 export async function extractTextFromPdf(file: File): Promise<string> {
-  const arrayBuffer = await file.arrayBuffer();
-  const pdf = await pdfjs.getDocument({ data: arrayBuffer }).promise;
-  let fullText = '';
+  try {
+    const arrayBuffer = await file.arrayBuffer();
+    const loadingTask = pdfjs.getDocument({ 
+      data: arrayBuffer,
+      useSystemFonts: true,
+      disableFontFace: false
+    });
+    
+    const pdf = await loadingTask.promise;
+    let fullText = '';
+    const maxPages = Math.min(pdf.numPages, 100); // Limit to first 100 pages for performance
 
-  for (let i = 1; i <= pdf.numPages; i++) {
-    const page = await pdf.getPage(i);
-    const textContent = await page.getTextContent();
-    const pageText = textContent.items
-      .map((item: any) => item.str)
-      .join(' ');
-    fullText += pageText + '\n\n';
+    for (let i = 1; i <= maxPages; i++) {
+      try {
+        const page = await pdf.getPage(i);
+        const textContent = await page.getTextContent();
+        const pageText = textContent.items
+          .map((item: any) => item.str)
+          .join(' ');
+        fullText += pageText + '\n\n';
+      } catch (pageErr) {
+        console.warn(`Erro ao processar página ${i}:`, pageErr);
+      }
+    }
+
+    if (!fullText.trim()) {
+      throw new Error('Nenhum texto extraível encontrado no PDF.');
+    }
+
+    return fullText;
+  } catch (error) {
+    console.error('Erro detalhado no processamento do PDF:', error);
+    throw error;
   }
-
-  return fullText;
 }

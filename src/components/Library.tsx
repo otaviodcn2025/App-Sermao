@@ -19,7 +19,8 @@ import { Resource } from '@/src/types';
 import * as pdfjs from 'pdfjs-dist';
 
 // Configuração do Worker do PDF.js
-pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
+const PDFJS_VERSION = '3.11.174';
+pdfjs.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDFJS_VERSION}/pdf.worker.min.js`;
 
 interface LibraryProps {
   resources: Resource[];
