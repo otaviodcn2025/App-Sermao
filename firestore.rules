@@ -95,5 +95,23 @@ service cloud.firestore {
                     incoming().diff(existing()).affectedKeys().hasAny(['title', 'content', 'updatedAt']);
       allow delete: if (isApproved() || isAdmin()) && resource.data.userId == request.auth.uid;
     }
+
+    // Resources Collection
+    match /resources/{resourceId} {
+      function isValidResource(data) {
+        return data.keys().hasAll(['id', 'userId', 'title', 'type', 'createdAt']) &&
+               data.id == resourceId &&
+               data.userId == request.auth.uid &&
+               data.title is string && data.title.size() <= 255 &&
+               data.type in ['pdf', 'link'] &&
+               data.createdAt is number;
+      }
+
+      allow list: if (isApproved() || isAdmin()) && resource.data.userId == request.auth.uid;
+      allow get: if (isApproved() || isAdmin()) && resource.data.userId == request.auth.uid;
+      allow create: if (isApproved() || isAdmin()) && isValidResource(incoming()) && isValidId(resourceId);
+      allow update: if (isApproved() || isAdmin()) && resource.data.userId == request.auth.uid && isValidResource(incoming());
+      allow delete: if (isApproved() || isAdmin()) && resource.data.userId == request.auth.uid;
+    }
   }
 }

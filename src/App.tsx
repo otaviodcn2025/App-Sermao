@@ -26,10 +26,11 @@ import { motion, AnimatePresence } from 'motion/react';
 import Editor from './components/Editor';
 import BibleSearch from './components/BibleSearch';
 import Auth from './components/Auth';
-import { Sermon, UserProfile } from './types';
+import { Sermon, UserProfile, Resource } from './types';
 import { cn, formatDate } from './lib/utils';
 import { generateSermonOutline, analyzeVerse, generateSlideDescriptions } from './lib/gemini';
 import { auth, db, handleFirestoreError, OperationType } from './lib/firebase';
+import { extractTextFromPdf } from './lib/pdf';
 import { onAuthStateChanged, signOut, User } from 'firebase/auth';
 import { 
   collection, 
@@ -49,6 +50,7 @@ import {
 import PresentationMode from './components/PresentationMode';
 import AdminPanel from './components/AdminPanel';
 import AiOutlineModal from './components/AiOutlineModal';
+import Library from './components/Library';
 
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
@@ -64,7 +66,9 @@ export default function App() {
   const [aiResponse, setAiResponse] = useState<string | null>(null);
   const [isAiModalOpen, setIsAiModalOpen] = useState(false);
   const [sharedSermonData, setSharedSermonData] = useState<Sermon | null>(null);
-  const [mobileTab, setMobileTab] = useState<'list' | 'editor' | 'bible'>('editor');
+  const [mobileTab, setMobileTab] = useState<'list' | 'editor' | 'bible' | 'library'>('editor');
+  const [currentView, setCurrentView] = useState<'editor' | 'library'>('editor');
+  const [resources, setResources] = useState<Resource[]>([]);
 
   // Initialize responsive state
   useEffect(() => {
@@ -234,6 +238,30 @@ export default function App() {
     return () => unsubscribe();
   }, [user, currentSermonId]);
 
+  // Sync Resources (Library) from Firestore
+  useEffect(() => {
+    if (!user || !db) return;
+
+    const path = 'resources';
+    const q = query(
+      collection(db, path), 
+      where('userId', '==', user.uid),
+      orderBy('createdAt', 'desc')
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const resourceList: Resource[] = snapshot.docs.map(doc => ({
+        ...doc.data(),
+        id: doc.id
+      } as Resource));
+      setResources(resourceList);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, path);
+    });
+
+    return () => unsubscribe();
+  }, [user]);
+
   // Keep track of last selected sermon per user
   useEffect(() => {
     if (user && currentSermonId) {
@@ -312,11 +340,14 @@ export default function App() {
     setIsAiLoading(true);
     setAiResponse(null);
     try {
+      // Feed reference content from library if available
+      const referenceContent = resources.map(r => r.extractedText).filter(Boolean).join('\n\n---\n\n').substring(0, 15000); // Limit to safety
+
       let result = '';
       if (action === 'expand') {
-        result = await generateSermonOutline(text);
+        result = await generateSermonOutline(text, '', referenceContent);
       } else if (action === 'context') {
-        result = await analyzeVerse(text, ''); // Text is the reference here
+        result = await analyzeVerse(text, '', referenceContent); // Text is the reference here
       } else if (action === 'slides') {
         result = await generateSlideDescriptions(currentSermon?.content || '');
       }
@@ -341,7 +372,10 @@ export default function App() {
     setIsAiLoading(true);
     setAiResponse(null);
     try {
-      const outline = await generateSermonOutline(theme, baseText, fileContent, userIdeias);
+      const libraryContext = resources.map(r => r.extractedText).filter(Boolean).join('\n\n---\n\n').substring(0, 20000);
+      const fullContext = `${fileContent}\n\nRECURSOS DA BIBLIOTECA:\n${libraryContext}`;
+      
+      const outline = await generateSermonOutline(theme, baseText, fullContext, userIdeias);
       if (outline) {
         setAiResponse(outline);
         setIsAiModalOpen(false);
@@ -356,6 +390,38 @@ export default function App() {
 
   const handleGenerateOutlineFromTheme = async () => {
     setIsAiModalOpen(true);
+  };
+
+  const handleResourceUpload = async (file: File) => {
+    if (!user || !db) return;
+    
+    try {
+      const text = await extractTextFromPdf(file);
+      const resourceRef = collection(db, 'resources');
+      const newDoc = doc(resourceRef);
+      
+      const resource: Resource = {
+        id: newDoc.id,
+        userId: user.uid,
+        title: file.name.replace('.pdf', ''),
+        type: 'pdf',
+        extractedText: text,
+        createdAt: Date.now()
+      };
+      
+      await setDoc(newDoc, resource);
+    } catch (err) {
+      handleFirestoreError(err, OperationType.CREATE, 'resources');
+    }
+  };
+
+  const handleResourceDelete = async (id: string) => {
+    if (!db || !confirm('Deseja excluir este livro da sua biblioteca?')) return;
+    try {
+      await deleteDoc(doc(db, 'resources', id));
+    } catch (err) {
+      handleFirestoreError(err, OperationType.DELETE, `resources/${id}`);
+    }
   };
 
   if (!auth || !db) {
@@ -585,6 +651,37 @@ export default function App() {
           </button>
         </div>
 
+        <div className="px-4 py-2 flex flex-col gap-1">
+          <button 
+            onClick={() => {
+              setCurrentView('editor');
+              setMobileTab('editor');
+              if(window.innerWidth < 1024) setIsSidebarOpen(false);
+            }}
+            className={cn(
+              "w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-bold transition-all",
+              currentView === 'editor' ? "bg-orange-50 text-orange-600 shadow-sm" : "text-slate-500 hover:bg-slate-50"
+            )}
+          >
+            <FileText size={18} />
+            Editor de Sermões
+          </button>
+          <button 
+            onClick={() => {
+              setCurrentView('library');
+              setMobileTab('library');
+              if(window.innerWidth < 1024) setIsSidebarOpen(false);
+            }}
+            className={cn(
+              "w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-bold transition-all",
+              currentView === 'library' ? "bg-orange-50 text-orange-600 shadow-sm" : "text-slate-500 hover:bg-slate-50"
+            )}
+          >
+            <Book size={18} />
+            Minha Biblioteca
+          </button>
+        </div>
+
         <div className="flex-1 overflow-y-auto px-2 space-y-1 pb-20 lg:pb-0">
           <div className="px-4 py-2">
             <h2 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-2">Meus Esboços</h2>
@@ -693,10 +790,17 @@ export default function App() {
           </div>
         </header>
 
-        {/* Editor Body */}
+        {/* Editor or Library Body */}
         <div className="flex-1 overflow-y-auto overflow-x-hidden px-4 md:px-12 py-6">
-          <div className="max-w-4xl mx-auto pb-24 md:pb-12">
-            {currentSermon ? (
+          <div className="max-w-4xl mx-auto pb-24 md:pb-12 h-full">
+            {currentView === 'library' ? (
+              <Library 
+                resources={resources}
+                onUpload={handleResourceUpload}
+                onDelete={handleResourceDelete}
+                userApproved={userProfile?.approved || false}
+              />
+            ) : currentSermon ? (
               <Editor 
                 content={currentSermon.content} 
                 onChange={(content) => updateSermon({ content })} 
@@ -846,6 +950,19 @@ export default function App() {
         >
           <BookOpen size={22} />
           <span className="text-[10px] font-bold uppercase tracking-wider">Editor</span>
+        </button>
+        <button 
+          onClick={() => {
+            setMobileTab('library');
+            setCurrentView('library');
+          }}
+          className={cn(
+            "flex flex-col items-center gap-1 flex-1 py-1 transition-all rounded-xl",
+             mobileTab === 'library' ? "text-orange-600 scale-110" : "text-slate-400"
+          )}
+        >
+          <Book size={22} />
+          <span className="text-[10px] font-bold uppercase tracking-wider">Biblioteca</span>
         </button>
         <div className="w-px h-8 bg-slate-100" />
         <button 

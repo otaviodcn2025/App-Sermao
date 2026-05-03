@@ -27,6 +27,21 @@
         "updatedAt": { "type": "number" }
       },
       "required": ["id", "userId", "title", "content", "createdAt", "updatedAt"]
+    },
+    "Resource": {
+      "title": "Resource",
+      "description": "Book or reference document extracted text",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "title": { "type": "string" },
+        "type": { "type": "string", "enum": ["pdf", "link"] },
+        "url": { "type": "string" },
+        "extractedText": { "type": "string" },
+        "createdAt": { "type": "number" }
+      },
+      "required": ["id", "userId", "title", "type", "createdAt"]
     }
   },
   "firestore": {
@@ -37,6 +52,10 @@
     "/sermons/{sermonId}": {
       "schema": "Sermon",
       "description": "Sermon documents"
+    },
+    "/resources/{resourceId}": {
+      "schema": "Resource",
+      "description": "Stored books and reference texts"
     }
   }
 }

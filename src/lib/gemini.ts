@@ -90,12 +90,18 @@ export async function generateSermonOutline(topic: string, baseText?: string, co
   }
 }
 
-export async function analyzeVerse(reference: string, textRef: string) {
+export async function analyzeVerse(reference: string, textRef: string, libraryContext?: string) {
   try {
     const ai = getAIClient();
     if (!ai) throw new Error("IA não disponível.");
 
     const prompt = `Analise profundamente o versículo ou passagem ${reference}: "${textRef}".
+    
+    ${libraryContext ? `UTILIZE OS SEGUINTES RECURSOS DA BIBLIOTECA COMO REFERÊNCIA ADICIONAL PARA SUA ANÁLISE:
+    ---
+    ${libraryContext}
+    ---` : ''}
+
     Forneça contexto histórico, análise linguística (grego/hebraico), comentário teológico e sugestão de aplicação/ilustração.`;
 
     const response = await ai.models.generateContent({

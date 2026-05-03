@@ -31,3 +31,13 @@ export interface BibleResponse {
   translation_name: string;
   translation_note: string;
 }
+
+export interface Resource {
+  id: string;
+  userId: string;
+  title: string;
+  type: 'pdf' | 'link';
+  url?: string;
+  extractedText?: string;
+  createdAt: number;
+}
