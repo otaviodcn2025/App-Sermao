@@ -103,8 +103,11 @@ service cloud.firestore {
                data.id == resourceId &&
                data.userId == request.auth.uid &&
                data.title is string && data.title.size() <= 255 &&
-               data.type in ['pdf', 'link'] &&
-               data.createdAt is number;
+               data.type in ['pdf', 'link', 'epub'] &&
+               data.createdAt is number &&
+               // Optional fields validation
+               (!('lastReadPosition' in data) || data.lastReadPosition is number) &&
+               (!('highlights' in data) || data.highlights is list);
       }
 
       allow list: if (isApproved() || isAdmin()) && resource.data.userId == request.auth.uid;
