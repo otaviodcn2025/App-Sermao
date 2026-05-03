@@ -489,7 +489,7 @@ export default function BibleSearch({ onAddVerse }: BibleSearchProps) {
                   </button>
                   <button 
                     onClick={nextChapter}
-                    disabled={selectedBook && selectedChapter === selectedBook.chapters}
+                    disabled={!!selectedBook && selectedChapter === selectedBook.chapters}
                     className="flex items-center gap-2 text-[10px] font-black text-slate-400 hover:text-orange-600 disabled:opacity-20 disabled:hover:text-slate-400 transition-colors uppercase tracking-widest"
                   >
                     Próximo Capítulo <ChevronRight size={16} />
