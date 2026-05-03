@@ -110,13 +110,15 @@ export default function Library({ resources, onUpload, onDelete, userApproved }:
     }
   };
 
-  if (selectedResource && isReadingMode) {
+  const currentResource = selectedResource ? resources.find(r => r.id === selectedResource.id) || selectedResource : null;
+
+  if (currentResource && isReadingMode) {
     return (
       <Reader 
-        resource={selectedResource} 
-        onUpdatePosition={(pos) => handleUpdatePosition(selectedResource.id, pos)}
-        onAddHighlight={(h) => handleAddHighlight(selectedResource.id, h)}
-        onDeleteHighlight={(id) => handleDeleteHighlight(selectedResource.id, id)}
+        resource={currentResource} 
+        onUpdatePosition={(pos) => handleUpdatePosition(currentResource.id, pos)}
+        onAddHighlight={(h) => handleAddHighlight(currentResource.id, h)}
+        onDeleteHighlight={(id) => handleDeleteHighlight(currentResource.id, id)}
         onClose={() => {
           setIsReadingMode(false);
           setSelectedResource(null);
@@ -125,7 +127,7 @@ export default function Library({ resources, onUpload, onDelete, userApproved }:
     );
   }
 
-  if (selectedResource) {
+  if (currentResource) {
     return (
       <div className="flex flex-col h-full bg-white rounded-3xl shadow-xl overflow-hidden border border-slate-100">
         <div className="p-4 border-b flex items-center justify-between gap-4 bg-slate-50">
@@ -137,7 +139,7 @@ export default function Library({ resources, onUpload, onDelete, userApproved }:
               <ChevronLeft size={20} />
             </button>
             <div>
-              <h2 className="font-black text-slate-800 tracking-tight">{selectedResource.title}</h2>
+              <h2 className="font-black text-slate-800 tracking-tight">{currentResource.title}</h2>
               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Visão Geral</p>
             </div>
           </div>
@@ -152,7 +154,7 @@ export default function Library({ resources, onUpload, onDelete, userApproved }:
         </div>
         <div className="flex-1 overflow-y-auto p-6 lg:p-12">
           <div className="max-w-3xl mx-auto prose prose-slate">
-            {selectedResource.summary && (
+            {currentResource.summary && (
               <div className="mb-12 p-6 bg-orange-50 rounded-3xl border border-orange-100">
                 <div className="flex items-center gap-2 mb-4 text-orange-800">
                   <div className="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center">
@@ -161,7 +163,7 @@ export default function Library({ resources, onUpload, onDelete, userApproved }:
                   <h3 className="font-black text-sm uppercase tracking-widest">Resumo da IA Pastoral</h3>
                 </div>
                 <div className="text-slate-700 text-sm leading-relaxed whitespace-pre-wrap italic">
-                  {selectedResource.summary}
+                  {currentResource.summary}
                 </div>
               </div>
             )}
@@ -171,9 +173,9 @@ export default function Library({ resources, onUpload, onDelete, userApproved }:
               <h3 className="font-black text-sm uppercase tracking-widest text-slate-400">Conteúdo Extraído</h3>
             </div>
             
-            {selectedResource.extractedText ? (
+            {currentResource.extractedText ? (
               <div className="whitespace-pre-wrap font-serif text-lg leading-relaxed text-slate-700">
-                {selectedResource.extractedText}
+                {currentResource.extractedText}
               </div>
             ) : (
               <div className="flex flex-col items-center justify-center h-64 text-slate-400 italic">

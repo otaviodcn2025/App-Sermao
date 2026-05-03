@@ -31,10 +31,10 @@ type Theme = 'light' | 'sepia' | 'dark';
 type FontFace = 'serif' | 'sans' | 'mono';
 
 const HIGHLIGHT_COLORS = [
-  { name: 'Amarelo', bg: 'bg-[#FEF08A]', value: 'rgba(254, 240, 138, 0.4)' },
-  { name: 'Verde', bg: 'bg-[#BBF7D0]', value: 'rgba(187, 247, 208, 0.4)' },
-  { name: 'Azul', bg: 'bg-[#BFDBFE]', value: 'rgba(191, 219, 254, 0.4)' },
-  { name: 'Rosa', bg: 'bg-[#FECDD3]', value: 'rgba(254, 205, 211, 0.4)' },
+  { name: 'Amarelo', bg: 'bg-[#FEF08A]', value: 'rgba(254, 240, 138, 0.6)' },
+  { name: 'Verde', bg: 'bg-[#BBF7D0]', value: 'rgba(187, 247, 208, 0.6)' },
+  { name: 'Azul', bg: 'bg-[#BFDBFE]', value: 'rgba(191, 219, 254, 0.6)' },
+  { name: 'Rosa', bg: 'bg-[#FECDD3]', value: 'rgba(254, 205, 211, 0.6)' },
 ];
 
 export default function Reader({ resource, onClose, onUpdatePosition, onAddHighlight, onDeleteHighlight }: ReaderProps) {
@@ -60,13 +60,22 @@ export default function Reader({ resource, onClose, onUpdatePosition, onAddHighl
     }
 
     const range = activeSelection.getRangeAt(0);
+    
+    // Ensure the selection is within the content container
+    if (!contentRef.current.contains(range.commonAncestorContainer)) {
+      setSelection(null);
+      return;
+    }
+
     const rect = range.getBoundingClientRect();
     
     // Calculate offsets relative to the text content
     const preSelectionRange = range.cloneRange();
     preSelectionRange.selectNodeContents(contentRef.current);
     preSelectionRange.setEnd(range.startContainer, range.startOffset);
-    const start = preSelectionRange.toString().length;
+    
+    // Using textContent instead of toString to be more consistent with the raw string
+    const start = preSelectionRange.cloneContents().textContent?.length || 0;
     const text = range.toString();
 
     if (text.trim().length > 0) {
@@ -83,8 +92,12 @@ export default function Reader({ resource, onClose, onUpdatePosition, onAddHighl
   const addHighlight = (color: string) => {
     if (!selection) return;
 
+    const id = typeof crypto !== 'undefined' && crypto.randomUUID 
+      ? crypto.randomUUID() 
+      : Math.random().toString(36).substring(2, 11);
+
     onAddHighlight?.({
-      id: crypto.randomUUID(),
+      id,
       text: selection.text,
       startIndex: selection.start,
       endIndex: selection.end,
@@ -167,6 +180,12 @@ export default function Reader({ resource, onClose, onUpdatePosition, onAddHighl
 
     const currentProgress = container.scrollTop / (container.scrollHeight - container.clientHeight);
     setProgress(currentProgress);
+
+    // Clear selection on scroll to avoid floating toolbar issues
+    if (selection) {
+      setSelection(null);
+      window.getSelection()?.removeAllRanges();
+    }
     
     // Save position if it changed significantly (more than 2%)
     if (Math.abs(currentProgress - lastSavedPosition.current) > 0.02) {
