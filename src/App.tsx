@@ -382,6 +382,7 @@ export default function App() {
       
       const outline = await generateSermonOutline(theme, baseText, fullContext, userIdeias);
       if (outline) {
+        setAiActionType('outline');
         setAiResponse(outline);
         setIsAiModalOpen(false);
       }
@@ -894,13 +895,16 @@ export default function App() {
               exit={{ y: "100%" }}
               className="absolute bottom-4 left-4 right-4 max-h-[60vh] bg-white border border-slate-200 shadow-2xl rounded-2xl z-30 flex flex-col overflow-hidden"
             >
-              <div className="p-4 border-bottom border-slate-100 flex items-center justify-between bg-slate-50/50">
+              <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
                 <div className="flex items-center gap-2">
                   <Sparkles size={18} className="text-orange-500" />
                   <span className="text-sm font-bold text-slate-800">Sugestão da IA</span>
                 </div>
                 <button 
-                  onClick={() => setAiResponse(null)}
+                  onClick={() => {
+                    setAiResponse(null);
+                    setAiActionType(null);
+                  }}
                   className="p-1 hover:bg-slate-200 rounded-md transition-colors"
                 >
                   <ChevronRight size={20} className="rotate-90" />
@@ -909,8 +913,8 @@ export default function App() {
               <div className="flex-1 overflow-y-auto p-6 prose prose-sm max-w-none prose-slate">
                 <div dangerouslySetInnerHTML={{ __html: aiResponse.replace(/\n/g, '<br/>') }} />
               </div>
-              <div className="p-4 border-top border-slate-100 bg-slate-50 flex justify-between gap-4">
-                 {aiActionType === 'slides' && (
+              <div className="p-4 border-t border-slate-100 bg-slate-50 flex justify-between gap-4">
+                 {(aiActionType === 'slides' || (aiResponse && aiResponse.includes('Slide 1'))) && (
                    <button 
                      onClick={async () => {
                        const slides = parseSlides(aiResponse || '');
@@ -931,8 +935,9 @@ export default function App() {
                     const newContent = (currentSermon?.content || '') + `<hr/><div class="ai-suggestion">${aiResponse.replace(/\n/g, '<br/>')}</div>`;
                     updateSermon({ content: newContent });
                     setAiResponse(null);
+                    setAiActionType(null);
                   }}
-                  className="bg-orange-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-orange-700 transition-colors shadow-sm"
+                  className="bg-orange-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-orange-700 transition-colors shadow-sm ml-auto"
                 >
                   Adicionar ao Sermão
                 </button>
