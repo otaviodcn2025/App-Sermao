@@ -29,6 +29,7 @@ interface ReaderProps {
 
 type Theme = 'light' | 'sepia' | 'dark';
 type FontFace = 'serif' | 'sans' | 'mono';
+type TextAlign = 'left' | 'justify';
 
 const HIGHLIGHT_COLORS = [
   { name: 'Amarelo', bg: 'bg-[#FEF08A]', value: 'rgba(254, 240, 138, 0.6)' },
@@ -42,6 +43,7 @@ export default function Reader({ resource, onClose, onUpdatePosition, onAddHighl
   const [lineHeight, setLineHeight] = useState(1.6);
   const [theme, setTheme] = useState<Theme>('sepia');
   const [fontFace, setFontFace] = useState<FontFace>('serif');
+  const [textAlign, setTextAlign] = useState<TextAlign>('left');
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showControls, setShowControls] = useState(true);
   const [progress, setProgress] = useState(0);
@@ -394,12 +396,13 @@ export default function Reader({ resource, onClose, onUpdatePosition, onAddHighl
         ref={scrollContainerRef}
         onScroll={handleScroll}
         onMouseUp={handleMouseUp}
-        className="flex-1 overflow-y-auto px-6 py-24 md:py-40 scroll-smooth"
+        className="flex-1 overflow-y-auto px-6 py-24 md:py-40 scroll-smooth selection:bg-orange-200"
       >
         <div 
           className={cn(
-            "max-w-3xl mx-auto transition-all duration-300 text-justify break-words hyphens-auto",
+            "max-w-3xl mx-auto transition-all duration-300 break-words hyphens-auto",
             fonts[fontFace],
+            textAlign === 'left' ? 'text-left' : 'text-justify',
             currentTheme.text
           )}
           style={{ 
@@ -464,6 +467,21 @@ export default function Reader({ resource, onClose, onUpdatePosition, onAddHighl
                   className={cn("px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all", fontFace === 'sans' ? (currentTheme.accent + " shadow-sm") : "opacity-50")}
                 >
                   Sans
+                </button>
+              </div>
+
+              <div className="hidden lg:flex bg-black/5 p-1 rounded-2xl">
+                <button 
+                  onClick={() => setTextAlign('left')}
+                  className={cn("px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all", textAlign === 'left' ? (currentTheme.accent + " shadow-sm") : "opacity-50")}
+                >
+                  Esquerda
+                </button>
+                <button 
+                  onClick={() => setTextAlign('justify')}
+                  className={cn("px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all", textAlign === 'justify' ? (currentTheme.accent + " shadow-sm") : "opacity-50")}
+                >
+                  Justificar
                 </button>
               </div>
 
