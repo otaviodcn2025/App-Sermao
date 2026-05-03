@@ -69,14 +69,28 @@ export default function Reader({ resource, onClose, onUpdatePosition, onAddHighl
 
     const rect = range.getBoundingClientRect();
     
-    // Calculate offsets relative to the text content
-    const preSelectionRange = range.cloneRange();
-    preSelectionRange.selectNodeContents(contentRef.current);
-    preSelectionRange.setEnd(range.startContainer, range.startOffset);
-    
-    // Using textContent instead of toString to be more consistent with the raw string
-    const start = preSelectionRange.cloneContents().textContent?.length || 0;
-    const text = range.toString();
+    // Improved robust offset calculation
+    const getSelectionOffset = (node: Node, offset: number, container: HTMLElement): number => {
+      let currentOffset = 0;
+      const walk = document.createTreeWalker(container, NodeFilter.SHOW_TEXT);
+      let currentNode = walk.nextNode();
+      
+      while (currentNode) {
+        if (currentNode === node) {
+          return currentOffset + offset;
+        }
+        currentOffset += currentNode.textContent?.length || 0;
+        currentNode = walk.nextNode();
+      }
+      return currentOffset;
+    };
+
+    const start = getSelectionOffset(range.startContainer, range.startOffset, contentRef.current);
+    const text = activeSelection.toString();
+
+    // The logic below identifies if the selection started inside an element that was rendered 
+    // before the actual extracted text, but we only want selection within the renderContent div.
+    // Let's refine the container for offset calculation.
 
     if (text.trim().length > 0) {
       setSelection({
@@ -387,7 +401,6 @@ export default function Reader({ resource, onClose, onUpdatePosition, onAddHighl
         className="flex-1 overflow-y-auto px-6 py-24 md:py-40 scroll-smooth"
       >
         <div 
-          ref={contentRef}
           className={cn(
             "max-w-3xl mx-auto transition-all duration-300 text-justify break-words hyphens-auto",
             fonts[fontFace],
@@ -404,7 +417,10 @@ export default function Reader({ resource, onClose, onUpdatePosition, onAddHighl
             <p className="text-sm mt-4 font-bold uppercase tracking-[0.2em]">Recurso Pastoral</p>
           </div>
           
-          <div className="whitespace-pre-wrap select-text selection:bg-orange-200 selection:text-orange-950">
+          <div 
+            ref={contentRef}
+            className="whitespace-pre-wrap select-text selection:bg-orange-200 selection:text-orange-950"
+          >
             {renderContent()}
           </div>
 

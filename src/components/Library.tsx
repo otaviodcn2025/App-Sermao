@@ -79,7 +79,7 @@ export default function Library({ resources, onUpload, onDelete, userApproved }:
 
   const handleAddHighlight = async (resourceId: string, highlight: any) => {
     try {
-      const resource = resources.find(r => r.id === resourceId);
+      const resource = (resources || []).find(r => r.id === resourceId);
       if (!resource) return;
 
       const currentHighlights = resource.highlights || [];
@@ -96,7 +96,7 @@ export default function Library({ resources, onUpload, onDelete, userApproved }:
 
   const handleDeleteHighlight = async (resourceId: string, highlightId: string) => {
     try {
-      const resource = resources.find(r => r.id === resourceId);
+      const resource = (resources || []).find(r => r.id === resourceId);
       if (!resource) return;
 
       const updatedHighlights = (resource.highlights || []).filter(h => h.id !== highlightId);
