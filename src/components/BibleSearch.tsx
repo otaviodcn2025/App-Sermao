@@ -459,7 +459,18 @@ export default function BibleSearch({ onAddVerse }: BibleSearchProps) {
             {browseLevel === 'verses' && result && (
               <div className="space-y-4 pb-20 animate-in fade-in slide-in-from-right-4 duration-300">
                 {result.verses.map((v, idx) => (
-                  <div key={idx} className="bg-white border border-slate-100 rounded-2xl p-4 shadow-sm hover:border-orange-300 transition-all group">
+                  <div 
+                    key={idx} 
+                    draggable
+                    onDragStart={(e) => {
+                      const verseInfo = {
+                        text: v.text,
+                        reference: `${v.book_name} ${v.chapter}:${v.verse}`
+                      };
+                      e.dataTransfer.setData('application/bible-verse', JSON.stringify(verseInfo));
+                    }}
+                    className="bg-white border border-slate-100 rounded-2xl p-4 shadow-sm hover:border-orange-300 transition-all group cursor-move"
+                  >
                     <div className="flex gap-4">
                       <span className="text-[10px] font-black text-orange-400 mt-1 shrink-0 bg-slate-50 w-7 h-7 flex items-center justify-center rounded-lg">{v.verse}</span>
                       <div className="flex-1 space-y-3">
@@ -507,7 +518,18 @@ export default function BibleSearch({ onAddVerse }: BibleSearchProps) {
                   <span className="text-[10px] font-bold text-orange-600 bg-orange-50 px-2 py-1 rounded-full">{result.verses.length} VERSÍCULOS</span>
                 </div>
                 {result.verses.map((v, idx) => (
-                  <div key={idx} className="bg-white border border-slate-100 rounded-2xl p-4 shadow-sm hover:border-orange-300 transition-all group">
+                  <div 
+                    key={idx} 
+                    draggable
+                    onDragStart={(e) => {
+                      const verseInfo = {
+                        text: v.text,
+                        reference: `${v.book_name} ${v.chapter}:${v.verse}`
+                      };
+                      e.dataTransfer.setData('application/bible-verse', JSON.stringify(verseInfo));
+                    }}
+                    className="bg-white border border-slate-100 rounded-2xl p-4 shadow-sm hover:border-orange-300 transition-all group cursor-move"
+                  >
                     <div className="flex gap-4">
                       <div className="flex-1 space-y-3">
                         <div className="flex items-center justify-between">
