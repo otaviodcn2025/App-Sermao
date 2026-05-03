@@ -23,12 +23,21 @@ interface ReaderProps {
   resource: Resource;
   onClose: () => void;
   onUpdatePosition?: (position: number) => void;
+  onAddHighlight?: (highlight: any) => void;
+  onDeleteHighlight?: (id: string) => void;
 }
 
 type Theme = 'light' | 'sepia' | 'dark';
 type FontFace = 'serif' | 'sans' | 'mono';
 
-export default function Reader({ resource, onClose, onUpdatePosition }: ReaderProps) {
+const HIGHLIGHT_COLORS = [
+  { name: 'Amarelo', bg: 'bg-[#FEF08A]', value: 'rgba(254, 240, 138, 0.4)' },
+  { name: 'Verde', bg: 'bg-[#BBF7D0]', value: 'rgba(187, 247, 208, 0.4)' },
+  { name: 'Azul', bg: 'bg-[#BFDBFE]', value: 'rgba(191, 219, 254, 0.4)' },
+  { name: 'Rosa', bg: 'bg-[#FECDD3]', value: 'rgba(254, 205, 211, 0.4)' },
+];
+
+export default function Reader({ resource, onClose, onUpdatePosition, onAddHighlight, onDeleteHighlight }: ReaderProps) {
   const [fontSize, setFontSize] = useState(20);
   const [lineHeight, setLineHeight] = useState(1.6);
   const [theme, setTheme] = useState<Theme>('sepia');
@@ -36,9 +45,107 @@ export default function Reader({ resource, onClose, onUpdatePosition }: ReaderPr
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showControls, setShowControls] = useState(true);
   const [progress, setProgress] = useState(0);
+  const [selection, setSelection] = useState<{ start: number; end: number; text: string; x: number; y: number } | null>(null);
   
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
   const lastSavedPosition = useRef<number>(resource.lastReadPosition || 0);
+
+  // Handle Text Selection
+  const handleMouseUp = (e: React.MouseEvent) => {
+    const activeSelection = window.getSelection();
+    if (!activeSelection || activeSelection.isCollapsed || !contentRef.current) {
+      setSelection(null);
+      return;
+    }
+
+    const range = activeSelection.getRangeAt(0);
+    const rect = range.getBoundingClientRect();
+    
+    // Calculate offsets relative to the text content
+    const preSelectionRange = range.cloneRange();
+    preSelectionRange.selectNodeContents(contentRef.current);
+    preSelectionRange.setEnd(range.startContainer, range.startOffset);
+    const start = preSelectionRange.toString().length;
+    const text = range.toString();
+
+    if (text.trim().length > 0) {
+      setSelection({
+        start,
+        end: start + text.length,
+        text,
+        x: rect.left + rect.width / 2,
+        y: rect.top
+      });
+    }
+  };
+
+  const addHighlight = (color: string) => {
+    if (!selection) return;
+
+    onAddHighlight?.({
+      id: crypto.randomUUID(),
+      text: selection.text,
+      startIndex: selection.start,
+      endIndex: selection.end,
+      color: color,
+      createdAt: Date.now()
+    });
+
+    setSelection(null);
+    window.getSelection()?.removeAllRanges();
+  };
+
+  // Helper to render text with highlights
+  const renderContent = () => {
+    const text = resource.extractedText || '';
+    const highlights = resource.highlights || [];
+    
+    if (highlights.length === 0) return text;
+
+    // Sort highlights by start index
+    const sorted = [...highlights].sort((a, b) => a.startIndex - b.startIndex);
+    const elements: React.ReactNode[] = [];
+    let lastIndex = 0;
+
+    sorted.forEach((h, index) => {
+      // Overlap prevention (simple version)
+      if (h.startIndex < lastIndex) return;
+
+      // Add normal text before highlight
+      if (h.startIndex > lastIndex) {
+        elements.push(<span key={`text-${index}`}>{text.substring(lastIndex, h.startIndex)}</span>);
+      }
+
+      // Add highlighted text
+      elements.push(
+        <mark 
+          key={h.id} 
+          style={{ backgroundColor: h.color, transition: 'background 0.3s' }}
+          className="relative group cursor-pointer rounded-sm"
+          onClick={(e) => {
+            e.stopPropagation();
+            if (confirm('Deseja remover este marcador?')) {
+              onDeleteHighlight?.(h.id);
+            }
+          }}
+        >
+          {text.substring(h.startIndex, h.endIndex)}
+          <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 bg-slate-900 text-white text-[8px] rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">
+            Remover Marcador
+          </span>
+        </mark>
+      );
+      lastIndex = h.endIndex;
+    });
+
+    // Add remaining text
+    if (lastIndex < text.length) {
+      elements.push(<span key="text-end">{text.substring(lastIndex)}</span>);
+    }
+
+    return elements;
+  };
 
   // Restore position on load
   useEffect(() => {
@@ -211,13 +318,57 @@ export default function Reader({ resource, onClose, onUpdatePosition }: ReaderPr
         )}
       </AnimatePresence>
 
+      {/* Selection Toolbar */}
+      <AnimatePresence>
+        {selection && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.8, y: 10 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.8, y: 10 }}
+            className="fixed z-[200] flex bg-white rounded-2xl shadow-2xl p-1.5 border border-slate-100 items-center gap-1"
+            style={{ 
+              left: selection.x, 
+              top: selection.y - 60,
+              transform: 'translateX(-50%)' 
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {HIGHLIGHT_COLORS.map((color) => (
+              <button
+                key={color.name}
+                onClick={() => addHighlight(color.value)}
+                className={cn(
+                  "w-10 h-10 rounded-xl transition-all hover:scale-110 active:scale-95 shadow-sm border border-black/5",
+                  color.bg
+                )}
+                title={color.name}
+              />
+            ))}
+            <div className="w-px h-6 bg-slate-100 mx-1" />
+            <button 
+              onClick={() => {
+                const text = selection.text;
+                navigator.clipboard.writeText(text);
+                setSelection(null);
+                window.getSelection()?.removeAllRanges();
+              }}
+              className="px-4 h-10 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-900 transition-colors"
+            >
+              Copiar
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Main Content Area */}
       <div 
         ref={scrollContainerRef}
         onScroll={handleScroll}
+        onMouseUp={handleMouseUp}
         className="flex-1 overflow-y-auto px-6 py-24 md:py-40 scroll-smooth"
       >
         <div 
+          ref={contentRef}
           className={cn(
             "max-w-3xl mx-auto transition-all duration-300 text-justify break-words hyphens-auto",
             fonts[fontFace],
@@ -235,7 +386,7 @@ export default function Reader({ resource, onClose, onUpdatePosition }: ReaderPr
           </div>
           
           <div className="whitespace-pre-wrap select-text selection:bg-orange-200 selection:text-orange-950">
-            {resource.extractedText}
+            {renderContent()}
           </div>
 
           <div className="mt-32 pt-16 border-t border-black/5 text-center">

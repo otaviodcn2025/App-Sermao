@@ -74,7 +74,39 @@ export default function Library({ resources, onUpload, onDelete, userApproved }:
       });
     } catch (error) {
       console.warn('Erro ao salvar posição de leitura:', error);
-      // We don't use handleFirestoreError here to avoid interrupting the reading flow with errors
+    }
+  };
+
+  const handleAddHighlight = async (resourceId: string, highlight: any) => {
+    try {
+      const resource = resources.find(r => r.id === resourceId);
+      if (!resource) return;
+
+      const currentHighlights = resource.highlights || [];
+      const updatedHighlights = [...currentHighlights, highlight];
+
+      const resourceRef = doc(db, 'resources', resourceId);
+      await updateDoc(resourceRef, {
+        highlights: updatedHighlights
+      });
+    } catch (error) {
+      console.error('Erro ao adicionar marcador:', error);
+    }
+  };
+
+  const handleDeleteHighlight = async (resourceId: string, highlightId: string) => {
+    try {
+      const resource = resources.find(r => r.id === resourceId);
+      if (!resource) return;
+
+      const updatedHighlights = (resource.highlights || []).filter(h => h.id !== highlightId);
+
+      const resourceRef = doc(db, 'resources', resourceId);
+      await updateDoc(resourceRef, {
+        highlights: updatedHighlights
+      });
+    } catch (error) {
+      console.error('Erro ao remover marcador:', error);
     }
   };
 
@@ -83,6 +115,8 @@ export default function Library({ resources, onUpload, onDelete, userApproved }:
       <Reader 
         resource={selectedResource} 
         onUpdatePosition={(pos) => handleUpdatePosition(selectedResource.id, pos)}
+        onAddHighlight={(h) => handleAddHighlight(selectedResource.id, h)}
+        onDeleteHighlight={(id) => handleDeleteHighlight(selectedResource.id, id)}
         onClose={() => {
           setIsReadingMode(false);
           setSelectedResource(null);

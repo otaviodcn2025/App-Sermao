@@ -41,5 +41,13 @@ export interface Resource {
   extractedText?: string;
   summary?: string;
   lastReadPosition?: number;
+  highlights?: {
+    id: string;
+    text: string;
+    startIndex: number;
+    endIndex: number;
+    color: string;
+    createdAt: number;
+  }[];
   createdAt: number;
 }
