@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   X, 
   Type, 
@@ -12,7 +12,8 @@ import {
   BookOpen,
   ChevronLeft,
   ChevronRight,
-  Info
+  Info,
+  Bookmark
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '@/src/lib/utils';
@@ -21,17 +22,50 @@ import { Resource } from '@/src/types';
 interface ReaderProps {
   resource: Resource;
   onClose: () => void;
+  onUpdatePosition?: (position: number) => void;
 }
 
 type Theme = 'light' | 'sepia' | 'dark';
 type FontFace = 'serif' | 'sans' | 'mono';
 
-export default function Reader({ resource, onClose }: ReaderProps) {
+export default function Reader({ resource, onClose, onUpdatePosition }: ReaderProps) {
   const [fontSize, setFontSize] = useState(18);
   const [theme, setTheme] = useState<Theme>('sepia');
   const [fontFace, setFontFace] = useState<FontFace>('serif');
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showControls, setShowControls] = useState(true);
+  const [progress, setProgress] = useState(0);
+  
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const lastSavedPosition = useRef<number>(resource.lastReadPosition || 0);
+
+  // Restore position on load
+  useEffect(() => {
+    if (scrollContainerRef.current && resource.lastReadPosition) {
+      const container = scrollContainerRef.current;
+      // We need to wait a bit for the layout to settle
+      const timeout = setTimeout(() => {
+        const position = resource.lastReadPosition || 0;
+        container.scrollTop = position * (container.scrollHeight - container.clientHeight);
+      }, 100);
+      return () => clearTimeout(timeout);
+    }
+  }, [resource.id]);
+
+  // Track scroll and update progress
+  const handleScroll = () => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+
+    const currentProgress = container.scrollTop / (container.scrollHeight - container.clientHeight);
+    setProgress(currentProgress);
+    
+    // Save position if it changed significantly (more than 2%)
+    if (Math.abs(currentProgress - lastSavedPosition.current) > 0.02) {
+      onUpdatePosition?.(currentProgress);
+      lastSavedPosition.current = currentProgress;
+    }
+  };
 
   // Auto-hide controls after inactivity
   useEffect(() => {
@@ -59,19 +93,22 @@ export default function Reader({ resource, onClose }: ReaderProps) {
       bg: 'bg-[#FCFCFC]',
       text: 'text-slate-900',
       ui: 'bg-white border-slate-200 text-slate-600',
-      accent: 'bg-blue-50 text-blue-600'
+      accent: 'bg-blue-50 text-blue-600',
+      progress: 'bg-blue-500'
     },
     sepia: {
       bg: 'bg-[#F4ECD8]',
       text: 'text-[#5B4636]',
       ui: 'bg-[#EBE3CF] border-[#D6CBB3] text-[#5B4636]',
-      accent: 'bg-[#E1D4B7] text-[#5B4636]'
+      accent: 'bg-[#E1D4B7] text-[#5B4636]',
+      progress: 'bg-[#5B4636]'
     },
     dark: {
       bg: 'bg-[#1A1A1A]',
       text: 'text-slate-300',
       ui: 'bg-[#2A2A2A] border-[#3A3A3A] text-slate-400',
-      accent: 'bg-[#3A3A3A] text-white'
+      accent: 'bg-[#3A3A3A] text-white',
+      progress: 'bg-white'
     }
   };
 
@@ -113,7 +150,8 @@ export default function Reader({ resource, onClose }: ReaderProps) {
               >
                 <X size={20} />
               </button>
-              <div className="hidden md:block">
+              <div className="hidden md:flex items-center gap-2">
+                <Bookmark size={14} className="text-orange-500" />
                 <h2 className="text-sm font-black truncate max-w-[200px] uppercase tracking-tighter">
                   {resource.title}
                 </h2>
@@ -121,6 +159,10 @@ export default function Reader({ resource, onClose }: ReaderProps) {
             </div>
 
             <div className="flex items-center gap-2 md:gap-6">
+              <div className="hidden sm:block text-[10px] font-black uppercase tracking-widest opacity-50">
+                Lendo: {Math.round(progress * 100)}%
+              </div>
+
               {/* Tooltip Info (Summary) */}
               {resource.summary && (
                 <div className="group relative">
@@ -169,7 +211,11 @@ export default function Reader({ resource, onClose }: ReaderProps) {
       </AnimatePresence>
 
       {/* Main Content Area */}
-      <div className="flex-1 overflow-y-auto px-6 py-24 md:py-32">
+      <div 
+        ref={scrollContainerRef}
+        onScroll={handleScroll}
+        className="flex-1 overflow-y-auto px-6 py-24 md:py-32 scroll-smooth"
+      >
         <div 
           className={cn(
             "max-w-prose mx-auto leading-relaxed transition-all duration-300 text-justify",
@@ -192,6 +238,14 @@ export default function Reader({ resource, onClose }: ReaderProps) {
             Fim do documento. Conteúdo processado por IA Pastoral.
           </div>
         </div>
+      </div>
+
+      {/* Reading Progress Indicator (Bottom edge) */}
+      <div className="absolute bottom-0 left-0 w-full h-1 bg-black/5 z-20">
+        <div 
+          className={cn("h-full transition-all duration-300", currentTheme.progress)}
+          style={{ width: `${progress * 100}%` }}
+        />
       </div>
 
       {/* Bottom Floating Controls (Font & Size) */}

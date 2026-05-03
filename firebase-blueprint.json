@@ -40,6 +40,7 @@
         "url": { "type": "string" },
         "extractedText": { "type": "string" },
         "summary": { "type": "string" },
+        "lastReadPosition": { "type": "number" },
         "createdAt": { "type": "number" }
       },
       "required": ["id", "userId", "title", "type", "createdAt"]

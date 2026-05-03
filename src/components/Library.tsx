@@ -12,12 +12,15 @@ import {
   AlertCircle,
   Eye,
   ChevronLeft,
-  Maximize2
+  Maximize2,
+  Bookmark
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '@/src/lib/utils';
 import { Resource } from '@/src/types';
 import * as pdfjs from 'pdfjs-dist';
+import { db, handleFirestoreError, OperationType } from '@/src/lib/firebase';
+import { doc, updateDoc } from 'firebase/firestore';
 
 // Configuração do Worker do PDF.js
 const PDFJS_VERSION = '3.11.174';
@@ -63,11 +66,24 @@ export default function Library({ resources, onUpload, onDelete, userApproved }:
   const filteredResources = resources.filter(r => 
     r.title.toLowerCase().includes(searchTerm.toLowerCase())
   );
+  
+  const handleUpdatePosition = async (resourceId: string, position: number) => {
+    try {
+      const resourceRef = doc(db, 'resources', resourceId);
+      await updateDoc(resourceRef, {
+        lastReadPosition: position
+      });
+    } catch (error) {
+      console.warn('Erro ao salvar posição de leitura:', error);
+      // We don't use handleFirestoreError here to avoid interrupting the reading flow with errors
+    }
+  };
 
   if (selectedResource && isReadingMode) {
     return (
       <Reader 
         resource={selectedResource} 
+        onUpdatePosition={(pos) => handleUpdatePosition(selectedResource.id, pos)}
         onClose={() => {
           setIsReadingMode(false);
           setSelectedResource(null);
@@ -209,6 +225,14 @@ export default function Library({ resources, onUpload, onDelete, userApproved }:
                   <div className="flex items-center gap-2">
                     <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">PDF</span>
                     <span className="w-1 h-1 bg-slate-200 rounded-full" />
+                    {resource.lastReadPosition !== undefined && resource.lastReadPosition > 0 && (
+                      <>
+                        <span className="flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-orange-500">
+                          <Bookmark size={10} /> {Math.round(resource.lastReadPosition * 100)}% Lidos
+                        </span>
+                        <span className="w-1 h-1 bg-slate-200 rounded-full" />
+                      </>
+                    )}
                     <span className="text-[10px] font-bold text-slate-400">
                       {new Date(resource.createdAt).toLocaleDateString('pt-BR')}
                     </span>

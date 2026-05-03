@@ -40,5 +40,6 @@ export interface Resource {
   url?: string;
   extractedText?: string;
   summary?: string;
+  lastReadPosition?: number;
   createdAt: number;
 }
