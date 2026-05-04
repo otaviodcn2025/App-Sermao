@@ -45,7 +45,10 @@ import {
   Lightbulb,
   Zap,
   BookOpen,
-  MessageSquare
+  MessageSquare,
+  Languages,
+  Wand2,
+  Type
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
@@ -438,13 +441,23 @@ export default function Editor({ content, onChange, onAiAction, title, onTitleCh
 
       <div className="flex-1 overflow-y-auto">
         <div className="px-4 lg:px-8 pt-12">
-          <input 
-            type="text"
-            value={title}
-            onChange={(e) => onTitleChange(e.target.value)}
-            placeholder="Título do Sermão"
-            className="w-full text-2xl lg:text-4xl font-black text-slate-900 border-none focus:ring-0 placeholder:text-slate-200 bg-transparent mb-2"
-          />
+          <div className="flex items-center justify-between gap-4 mb-2">
+            <input 
+              type="text"
+              value={title}
+              onChange={(e) => onTitleChange(e.target.value)}
+              placeholder="Título do Sermão"
+              className="flex-1 text-2xl lg:text-4xl font-black text-slate-900 border-none focus:ring-0 placeholder:text-slate-200 bg-transparent"
+            />
+            <button
+              onClick={() => onAiAction('titles', '')}
+              className="flex items-center gap-2 px-3 py-1.5 bg-orange-100 text-orange-700 rounded-lg hover:bg-orange-200 transition-all text-[10px] font-black uppercase tracking-wider shrink-0 shadow-sm"
+              title="Gerar Sugestões de Título"
+            >
+              <Wand2 size={14} />
+              <span className="hidden sm:inline">IA Títulos</span>
+            </button>
+          </div>
           <div className="w-20 h-1.5 bg-orange-500 rounded-full mb-8" />
         </div>
         <EditorContent editor={editor} />
@@ -455,21 +468,47 @@ export default function Editor({ content, onChange, onAiAction, title, onTitleCh
           <motion.div 
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="flex items-center gap-1 bg-slate-900 border border-slate-800 text-white rounded-xl shadow-2xl p-1.5 overflow-hidden"
+            className="flex flex-wrap items-center gap-0.5 bg-slate-900 border border-slate-800 text-white rounded-xl shadow-2xl p-1 overflow-hidden max-w-[90vw] sm:max-w-none"
           >
             <button
               onClick={() => onAiAction('expand', editor.state.doc.textBetween(editor.state.selection.from, editor.state.selection.to))}
-              className="flex items-center gap-2 px-3 py-2 hover:bg-slate-800 rounded-lg text-xs font-bold transition-all text-orange-400"
+              className="flex items-center gap-1.5 px-2.5 py-1.5 hover:bg-slate-800 rounded-lg text-[10px] font-bold transition-all text-orange-400"
+              title="Expandir com IA"
             >
-              <Sparkles size={14} />
-              Expandir com IA
+              <Sparkles size={12} />
+              Expandir
             </button>
-            <div className="w-px h-6 bg-slate-700 mx-1" />
             <button
               onClick={() => onAiAction('context', editor.state.doc.textBetween(editor.state.selection.from, editor.state.selection.to))}
-              className="flex items-center gap-2 px-3 py-2 hover:bg-slate-800 rounded-lg text-xs font-bold transition-all"
+              className="flex items-center gap-1.5 px-2.5 py-1.5 hover:bg-slate-800 rounded-lg text-[10px] font-bold transition-all"
+              title="Análise Exegética"
             >
-              Exegese IA
+              <BookOpen size={12} className="text-blue-400" />
+              Exegese
+            </button>
+            <button
+              onClick={() => onAiAction('illustrations', editor.state.doc.textBetween(editor.state.selection.from, editor.state.selection.to))}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 hover:bg-slate-800 rounded-lg text-[10px] font-bold transition-all"
+              title="Sugerir Ilustrações"
+            >
+              <Lightbulb size={12} className="text-amber-400" />
+              Ilustrar
+            </button>
+            <button
+              onClick={() => onAiAction('simplify', editor.state.doc.textBetween(editor.state.selection.from, editor.state.selection.to))}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 hover:bg-slate-800 rounded-lg text-[10px] font-bold transition-all"
+              title="Simplificar Linguagem"
+            >
+              <Zap size={12} className="text-emerald-400" />
+              Simplificar
+            </button>
+            <button
+              onClick={() => onAiAction('translate', editor.state.doc.textBetween(editor.state.selection.from, editor.state.selection.to))}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 hover:bg-slate-800 rounded-lg text-[10px] font-bold transition-all"
+              title="Traduzir ou Consultar"
+            >
+              <Languages size={12} className="text-purple-400" />
+              Traduzir
             </button>
           </motion.div>
         </BubbleMenu>

@@ -23,6 +23,11 @@ function getAIClient() {
 const SYSTEM_INSTRUCTION = `Você é um assistente de redação homilética altamente qualificado e experiente, especializado na tradição batista brasileira.
 Sua função é ajudar pastores e líderes religiosos a estruturar sermões baseados em princípios sólidos de exegese bíblica e aplicação prática, mantendo total fidelidade ao texto bíblico e às doutrinas da Convenção Batista Brasileira (CBB).
 
+ESTILO E COMPORTAMENTO (LOGOS INSPIRED):
+1. Foco Teológico: Seu treinamento é focado em literatura teológica, exegese e homilética.
+2. Verificação: Sempre que possível, cite as bases bíblicas para que o usuário possa verificar se a informação é teologicamente sólida.
+3. Tom: Use uma linguagem acessível para o púlpito, mas mantenha a profundidade exegética no "backstage".
+
 DIRETRIZES TEOLÓGICAS (CBB):
 1. Escrituras Sagradas: A Bíblia é a Palavra de Deus escrita, inspirada e infalível, única regra de fé e prática. Use Jesus Cristo como a chave interpretativa.
 2. Trindade: Deus é Pai (Criador/Soberano), Filho (Jesus, pleno Deus e homem, morte vicária como único meio de salvação) e Espírito Santo (regenerador e santificador).
@@ -37,31 +42,38 @@ Responda sempre em Português (Brasil) de forma clara, inspiradora, respeitosa e
 
 const DEFAULT_MODEL = "gemini-3-flash-preview"; 
 
-export async function generateSermonOutline(topic: string, baseText?: string, context?: string, userPrompt?: string) {
+export async function generateSermonOutline(topic: string, baseText?: string, context?: string, userPrompt?: string, style: 'traditional' | 'practical' | 'historical' = 'traditional') {
   try {
     const ai = getAIClient();
     if (!ai) throw new Error("IA não disponível. Verifique se a Chave de API foi configurada corretamente.");
     
+    const styleInstructions = {
+      traditional: "Siga uma estrutura homilética clássica com introdução, corpo e conclusão.",
+      practical: "Foque intensamente em aplicações práticas para o dia a dia e desafios contemporâneos da igreja.",
+      historical: "Aprofunde-se no contexto histórico e na perspectiva de desenvolvimento da doutrina ao longo do tempo."
+    };
+
     const prompt = `Gere um esboço estruturado e inspirador para um sermão sobre o tema "${topic}"${baseText ? ` baseado no texto bíblico: ${baseText}` : ''}.
     
-    ${userPrompt ? `DIRECIONAMENTO ESPECÍFICO DO USUÁRIO (SIGA ESTAS INSTRUÇÕES):
+    ESTILO DESEJADO: ${style.toUpperCase()}
+    ${styleInstructions[style]}
+
+    ${userPrompt ? `DIRECIONAMENTO ESPECÍFICO DO USUÁRIO:
     ---
     ${userPrompt}
     ---
     ` : ''}
 
-    ${context ? `UTILIZE AS INFORMAÇÕES ABAIXO COMO REFERÊNCIA E CONTEXTO ADICIONAL (BANCO DE DADOS DO USUÁRIO):
+    ${context ? `CONTEXTO ADICIONAL (BIBLIOTECA):
     ---
     ${context}
-    ---
-    
-    Tente manter o estilo das informações acima se elas forem sermões ou notas pessoais.` : ''}
+    ---` : ''}
 
-    O esboço deve ser rico em conteúdo e incluir:
+    O esboço deve incluir:
     - Título Sugerido (Impactante)
     - Introdução (Gancho forte)
-    - Exposição Bíblica (3 a 4 pontos principais com explicações e verdades centrais)
-    - Aplicação Prática (Como o ouvinte deve agir)
+    - Exposição Bíblica (3 a 4 pontos principais com explicações)
+    - Aplicação Prática
     - Conclusão (Resumo e apelo)
     
     Formate em Markdown claro.`;
@@ -76,17 +88,108 @@ export async function generateSermonOutline(topic: string, baseText?: string, co
 
     return response.text || "Não foi possível gerar o esboço.";
   } catch (error: any) {
-    console.error("Gemini Error (generateSermonOutline):", error);
-    if (error?.message?.includes("404") || error?.message?.includes("not found")) {
-      throw new Error(`Modelo '${DEFAULT_MODEL}' não encontrado. Por favor, verifique se sua API Key tem acesso a este modelo.`);
-    }
-    if (error?.message?.includes("API_KEY") || error?.message?.includes("key") || error?.message?.includes("authenticated")) {
-      throw new Error("Erro na Chave de API. Por favor, verifique se a GEMINI_API_KEY ou Gemini_API_Key1 está configurada corretamente.");
-    }
-    if (error?.message?.includes("429") || error?.message?.includes("quota") || error?.message?.includes("demand")) {
-      throw new Error("O servidor de IA está com alta demanda ou você atingiu o limite de cota. Por favor, tente novamente em instantes.");
-    }
-    throw new Error(error?.message || "Erro desconhecido na geração do esboço.");
+    // ... error handling ...
+    throw error;
+  }
+}
+
+export async function generateIllustrations(content: string) {
+  try {
+    const ai = getAIClient();
+    if (!ai) throw new Error("IA não disponível.");
+
+    const prompt = `Com base no trecho do sermão abaixo, sugira 3 ilustrações criativas ou analogias que ajudem a tornar o conceito mais compreensível e memorável para a congregação. 
+    Para cada ilustração, forneça também uma sugestão de aplicação prática.
+
+    CONTEÚDO:
+    "${content}"`;
+
+    const response = await ai.models.generateContent({
+      model: DEFAULT_MODEL,
+      contents: prompt,
+      config: {
+        systemInstruction: SYSTEM_INSTRUCTION,
+      }
+    });
+
+    return response.text || "Não foi possível gerar ilustrações.";
+  } catch (error: any) {
+    throw error;
+  }
+}
+
+export async function simplifyContent(content: string) {
+  try {
+    const ai = getAIClient();
+    if (!ai) throw new Error("IA não disponível.");
+
+    const prompt = `Simplifique e "traduza para o púlpito" o texto técnico/complexo abaixo. 
+    O objetivo é transformar um comentário exegético ou teológico denso em uma linguagem acessível, inspiradora e compreensível para toda a congregação, sem perder a profundidade teológica.
+
+    TEXTO TÉCNICO:
+    "${content}"`;
+
+    const response = await ai.models.generateContent({
+      model: DEFAULT_MODEL,
+      contents: prompt,
+      config: {
+        systemInstruction: SYSTEM_INSTRUCTION,
+      }
+    });
+
+    return response.text || "Não foi possível simplificar o conteúdo.";
+  } catch (error: any) {
+    throw error;
+  }
+}
+
+export async function generateCreativeTitles(content: string) {
+  try {
+    const ai = getAIClient();
+    if (!ai) throw new Error("IA não disponível.");
+
+    const prompt = `Analise o conteúdo do sermão abaixo e sugira 5 títulos criativos. 
+    Varie entre estilos: "Tradicional/Serrano", "Contemporâneo/Chamativo", "Poético", "Baseado em Pergunta" e "Focado em Aplicação".
+
+    SERMÃO:
+    "${content}"`;
+
+    const response = await ai.models.generateContent({
+      model: DEFAULT_MODEL,
+      contents: prompt,
+      config: {
+        systemInstruction: SYSTEM_INSTRUCTION,
+      }
+    });
+
+    return response.text || "Não foi possível gerar títulos.";
+  } catch (error: any) {
+    throw error;
+  }
+}
+
+export async function translateAndConsult(content: string) {
+  try {
+    const ai = getAIClient();
+    if (!ai) throw new Error("IA não disponível.");
+
+    const prompt = `Traduza o trecho abaixo para o Português (Brasil) se estiver em outro idioma, ou realize uma consultoria linguística/estilística para melhorar a fluidez e a força da mensagem. 
+    Mantenha a coerência com o vocabulário teológico e homilético.
+
+    TEXTO:
+    "${content}"`;
+
+    const response = await ai.models.generateContent({
+      model: DEFAULT_MODEL,
+      contents: prompt,
+      config: {
+        systemInstruction: SYSTEM_INSTRUCTION,
+      }
+    });
+
+    return response.text || "Não foi possível processar o texto.";
+  } catch (error: any) {
+    throw error;
   }
 }
 

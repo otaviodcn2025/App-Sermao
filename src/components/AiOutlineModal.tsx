@@ -20,7 +20,7 @@ pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/$
 
 interface AiOutlineModalProps {
   onClose: () => void;
-  onGenerate: (theme: string, baseText: string, fileContent: string, userIdeias: string) => Promise<void>;
+  onGenerate: (theme: string, baseText: string, fileContent: string, userIdeias: string, style: 'traditional' | 'practical' | 'historical') => Promise<void>;
   isLoading: boolean;
 }
 
@@ -35,6 +35,7 @@ export default function AiOutlineModal({ onClose, onGenerate, isLoading }: AiOut
   const [theme, setTheme] = useState('');
   const [baseText, setBaseText] = useState('');
   const [userIdeias, setUserIdeias] = useState('');
+  const [style, setStyle] = useState<'traditional' | 'practical' | 'historical'>('traditional');
   const [attachedFiles, setAttachedFiles] = useState<AttachedFile[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -112,7 +113,7 @@ export default function AiOutlineModal({ onClose, onGenerate, isLoading }: AiOut
       .map(f => `CONTEÚDO DO ARQUIVO (${f.name}):\n${f.content}`)
       .join('\n\n---\n\n');
       
-    onGenerate(theme, baseText, combinedFileContent, userIdeias);
+    onGenerate(theme, baseText, combinedFileContent, userIdeias, style);
   };
 
   return (
@@ -164,6 +165,33 @@ export default function AiOutlineModal({ onClose, onGenerate, isLoading }: AiOut
               placeholder="Ex: O Poder da Oração, Superando a Ansiedade..."
               className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-orange-500/20 outline-none text-slate-800 font-bold transition-all placeholder:font-normal"
             />
+          </div>
+
+          {/* Style Selection */}
+          <div className="space-y-3">
+            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+              <History size={12} className="text-orange-500" />
+              Estilo da Abordagem
+            </label>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              {(['traditional', 'practical', 'historical'] as const).map((s) => (
+                <button
+                  key={s}
+                  onClick={() => setStyle(s)}
+                  className={cn(
+                    "px-4 py-3 rounded-2xl text-xs font-bold border-2 transition-all flex flex-col items-center gap-1",
+                    style === s 
+                      ? "bg-orange-50 border-orange-500 text-orange-700 shadow-sm" 
+                      : "bg-slate-50 border-transparent text-slate-400 hover:bg-slate-100"
+                  )}
+                >
+                  <span className="capitalize">{s === 'traditional' ? 'Clássico' : s === 'practical' ? 'Prático' : 'Histórico'}</span>
+                  <span className="text-[9px] font-medium opacity-70">
+                    {s === 'traditional' ? 'Homilética Padrão' : s === 'practical' ? 'Foco na Vida Diária' : 'Contexto e Raízes'}
+                  </span>
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* Base Text Input */}

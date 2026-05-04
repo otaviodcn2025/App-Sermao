@@ -29,7 +29,16 @@ import BibleSearch from './components/BibleSearch';
 import Auth from './components/Auth';
 import { Sermon, UserProfile, Resource } from './types';
 import { cn, formatDate, parseSlides } from './lib/utils';
-import { generateSermonOutline, analyzeVerse, generateSlideDescriptions, summarizeResource } from './lib/gemini';
+import { 
+  generateSermonOutline, 
+  analyzeVerse, 
+  generateSlideDescriptions, 
+  summarizeResource,
+  generateIllustrations,
+  simplifyContent,
+  generateCreativeTitles,
+  translateAndConsult
+} from './lib/gemini';
 import { generatePowerPoint } from './lib/pptx';
 import { auth, db, handleFirestoreError, OperationType } from './lib/firebase';
 import { extractTextFromPdf } from './lib/pdf';
@@ -352,9 +361,17 @@ export default function App() {
       if (action === 'expand') {
         result = await generateSermonOutline(text, '', referenceContent);
       } else if (action === 'context') {
-        result = await analyzeVerse(text, '', referenceContent); // Text is the reference here
+        result = await analyzeVerse(text, '', referenceContent);
       } else if (action === 'slides') {
         result = await generateSlideDescriptions(currentSermon?.content || '');
+      } else if (action === 'illustrations') {
+        result = await generateIllustrations(text);
+      } else if (action === 'simplify') {
+        result = await simplifyContent(text);
+      } else if (action === 'titles') {
+        result = await generateCreativeTitles(currentSermon?.content || '');
+      } else if (action === 'translate') {
+        result = await translateAndConsult(text);
       }
       setAiResponse(result);
     } catch (err) {
@@ -373,14 +390,14 @@ export default function App() {
     }
   };
 
-  const handleGenerateOutline = async (theme: string, baseText: string, fileContent: string, userIdeias: string) => {
+  const handleGenerateOutline = async (theme: string, baseText: string, fileContent: string, userIdeias: string, style: 'traditional' | 'practical' | 'historical') => {
     setIsAiLoading(true);
     setAiResponse(null);
     try {
       const libraryContext = resources.map(r => r.extractedText).filter(Boolean).join('\n\n---\n\n').substring(0, 20000);
       const fullContext = `${fileContent}\n\nRECURSOS DA BIBLIOTECA:\n${libraryContext}`;
       
-      const outline = await generateSermonOutline(theme, baseText, fullContext, userIdeias);
+      const outline = await generateSermonOutline(theme, baseText, fullContext, userIdeias, style);
       if (outline) {
         setAiActionType('outline');
         setAiResponse(outline);
