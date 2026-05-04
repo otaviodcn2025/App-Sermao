@@ -69,11 +69,7 @@ export default function Reader({ resource, onClose, onUpdatePosition, onAddHighl
       return;
     }
 
-    const rects = range.getClientRects();
-    if (rects.length === 0) return;
-
-    // Use the last rect for the toolbar positioning (top of it)
-    const rect = rects[0];
+    const rect = range.getBoundingClientRect();
     
     // Improved robust offset calculation
     const getSelectionOffset = (node: Node, offset: number, container: HTMLElement): number => {
@@ -100,7 +96,7 @@ export default function Reader({ resource, onClose, onUpdatePosition, onAddHighl
         end: start + text.length,
         text,
         x: rect.left + rect.width / 2,
-        y: rect.top
+        y: rect.top - 10 // Position slightly above the start of selection
       });
     }
   };
@@ -202,11 +198,15 @@ export default function Reader({ resource, onClose, onUpdatePosition, onAddHighl
     const currentProgress = container.scrollTop / (container.scrollHeight - container.clientHeight);
     setProgress(currentProgress);
 
-    // Clear selection on scroll to avoid floating toolbar issues
+    // Clear selection ONLY if it's a significant scroll (more than a few pixels)
+    // or just let the selectionchange handler manage it more naturally.
+    // For now, let's remove the forced clear on every tiny scroll to avoid issues on mobile
+    /*
     if (selection) {
       setSelection(null);
       window.getSelection()?.removeAllRanges();
     }
+    */
     
     // Save position if it changed significantly (more than 2%)
     if (Math.abs(currentProgress - lastSavedPosition.current) > 0.02) {
@@ -377,7 +377,7 @@ export default function Reader({ resource, onClose, onUpdatePosition, onAddHighl
             className="fixed z-[200] flex bg-white rounded-2xl shadow-2xl p-1.5 border border-slate-100 items-center gap-1 scroll-none"
             style={{ 
               left: Math.max(160, Math.min(window.innerWidth - 160, selection.x)), 
-              top: Math.max(80, selection.y - 60),
+              top: Math.max(80, selection.y - 100),
               transform: 'translateX(-50%)' 
             }}
             onClick={(e) => e.stopPropagation()}

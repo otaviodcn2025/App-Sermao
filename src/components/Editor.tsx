@@ -393,11 +393,18 @@ export default function Editor({ content, onChange, onAiAction, title, onTitleCh
       </div>
 
       {editor && (
-        <BubbleMenu editor={editor} tippyOptions={{ duration: 100 }}>
+        <BubbleMenu 
+          editor={editor} 
+          tippyOptions={{ 
+            duration: 100,
+            offset: [0, 40], // Increased offset to clear native menus
+            zIndex: 9999,
+          }}
+        >
           <motion.div 
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="flex flex-wrap items-center gap-0.5 bg-slate-900 border border-slate-800 text-white rounded-xl shadow-2xl p-1 overflow-hidden max-w-[90vw] sm:max-w-none"
+            initial={{ opacity: 0, scale: 0.95, y: 10 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            className="flex flex-wrap items-center gap-0.5 bg-slate-900 border border-slate-800 text-white rounded-xl shadow-2xl p-1.5 overflow-hidden max-w-[85vw] sm:max-w-none"
           >
             <button
               onClick={() => onAiAction('expand', editor.state.doc.textBetween(editor.state.selection.from, editor.state.selection.to))}
