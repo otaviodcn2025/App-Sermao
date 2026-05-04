@@ -467,7 +467,10 @@ export default function BibleSearch({ onAddVerse }: BibleSearchProps) {
                         text: v.text,
                         reference: `${v.book_name} ${v.chapter}:${v.verse}`
                       };
-                      e.dataTransfer.setData('application/bible-verse', JSON.stringify(verseInfo));
+                      const json = JSON.stringify(verseInfo);
+                      e.dataTransfer.setData('application/bible-verse', json);
+                      e.dataTransfer.setData('text/plain', `${v.text} — ${verseInfo.reference}`);
+                      e.dataTransfer.effectAllowed = 'copy';
                     }}
                     className="bg-white border border-slate-100 rounded-2xl p-4 shadow-sm hover:border-orange-300 transition-all group cursor-move"
                   >
@@ -526,7 +529,10 @@ export default function BibleSearch({ onAddVerse }: BibleSearchProps) {
                         text: v.text,
                         reference: `${v.book_name} ${v.chapter}:${v.verse}`
                       };
-                      e.dataTransfer.setData('application/bible-verse', JSON.stringify(verseInfo));
+                      const json = JSON.stringify(verseInfo);
+                      e.dataTransfer.setData('application/bible-verse', json);
+                      e.dataTransfer.setData('text/plain', `${v.text} — ${verseInfo.reference}`);
+                      e.dataTransfer.effectAllowed = 'copy';
                     }}
                     className="bg-white border border-slate-100 rounded-2xl p-4 shadow-sm hover:border-orange-300 transition-all group cursor-move"
                   >

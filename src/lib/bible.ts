@@ -12,8 +12,8 @@ export interface ParsedReference {
 
 export function parseBibleReference(query: string): ParsedReference | null {
   const q = query.trim();
-  // Pattern supports: "John 3:16", "John 3.16", "1 Cor 13", "1 Co 13:1-4"
-  const refMatch = q.match(/^([1-3]?\s?[a-zA-ZáéíóúÁÉÍÓÚçÇ]+)\s*(\d+)(?:[:.](\d+))?(?:-(\d+))?$/i);
+  // Pattern supports: "João 3:16", "João 3.16", "1 Cor 13", "1 Co 13:1-4"
+  const refMatch = q.match(/^([1-3]?\s?[a-zA-ZáàâãéèêíïóòôõúùûçÁÀÂÃÉÈÊÍÏÓÒÔÕÚÙÛÇ]+)\s*(\d+)(?:[:.](\d+))?(?:-(\d+))?$/i);
   
   if (!refMatch) return null;
 

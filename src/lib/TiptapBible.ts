@@ -7,9 +7,9 @@ export const BibleReference = Extension.create({
   addInputRules() {
     return [
       new InputRule({
-        find: /((?:[1-3]?\s+)?[a-zA-ZáéíóúÁÉÍÓÚçÇ]{2,})\s+(\d+)(?:[:.](\d+))?(?:-(\d+))?\s$/,
+        find: /((?:[1-3]?\s*)?[a-zA-ZáàâãéèêíïóòôõúùûçÁÀÂÃÉÈÊÍÏÓÒÔÕÚÙÛÇ]{2,})\s+(\d+)(?:[:.](\d+))?(?:-(\d+))?\s$/,
         handler: async ({ state, range, match }) => {
-          const query = match[0].trim();
+          const query = match[1].trim() + " " + match[2] + (match[3] ? ":" + match[3] : "") + (match[4] ? "-" + match[4] : "");
           const parsed = parseBibleReference(query);
           
           if (!parsed) return null;
@@ -20,9 +20,9 @@ export const BibleReference = Extension.create({
               .focus()
               .deleteRange(range)
               .insertContent(`
-                <blockquote class="bible-scripture border-l-4 border-orange-500 pl-4 my-6 bg-orange-50/30 p-4 rounded-r-lg">
-                  <p class="italic text-slate-700 leading-relaxed">"${verses.text}"</p>
-                  <p class="text-right text-xs font-bold text-orange-600 mt-2">— ${verses.reference}</p>
+                <blockquote>
+                  <p>"${verses.text}"</p>
+                  <p>— ${verses.reference}</p>
                 </blockquote>
                 <p></p>
               `)
@@ -32,6 +32,49 @@ export const BibleReference = Extension.create({
         },
       }),
     ];
+  },
+
+  addProseMirrorProps() {
+    return {
+      handleDragOver: (_view, event) => {
+        if (event.dataTransfer?.types.includes('application/bible-verse')) {
+          event.preventDefault();
+          return true;
+        }
+        return false;
+      },
+      handleDrop: (view, event, _slice, moved) => {
+        const bibleData = event.dataTransfer?.getData('application/bible-verse');
+        if (!moved && bibleData) {
+          event.preventDefault();
+          event.stopPropagation();
+          
+          try {
+            const data = JSON.parse(bibleData);
+            const { text, reference } = data;
+            
+            const coordinates = view.posAtCoords({ left: event.clientX, top: event.clientY });
+            const pos = coordinates ? coordinates.pos : view.state.selection.from;
+            
+            const content = `
+              <blockquote>
+                <p>"${text}"</p>
+                <p>— ${reference}</p>
+              </blockquote>
+              <p></p>
+            `;
+            
+            this.editor.commands.insertContentAt(pos, content);
+            this.editor.commands.focus();
+            
+            return true;
+          } catch (e) {
+            console.error('Error parsing bible verse drop data:', e);
+          }
+        }
+        return false;
+      },
+    };
   },
 
   addKeyboardShortcuts() {
@@ -45,7 +88,7 @@ export const BibleReference = Extension.create({
         const textBefore = $from.parent.textContent;
         
         // Regex for bible reference at the end of string
-        const regex = /((?:[1-3]?\s+)?[a-zA-ZáéíóúÁÉÍÓÚçÇ]{2,})\s+(\d+)(?:[:.](\d+))?(?:-(\d+))?$/i;
+        const regex = /((?:[1-3]?\s*)?[a-zA-ZáàâãéèêíïóòôõúùûçÁÀÂÃÉÈÊÍÏÓÒÔÕÚÙÛÇ]{2,})\s+(\d+)(?:[:.](\d+))?(?:-(\d+))?$/i;
         const match = textBefore.match(regex);
         
         if (match) {
@@ -63,9 +106,9 @@ export const BibleReference = Extension.create({
                   .focus()
                   .deleteRange({ from, to })
                   .insertContent(`
-                    <blockquote class="bible-scripture border-l-4 border-orange-500 pl-4 my-6 bg-orange-50/30 p-4 rounded-r-lg">
-                      <p class="italic text-slate-700 leading-relaxed">"${verses.text}"</p>
-                      <p class="text-right text-xs font-bold text-orange-600 mt-2">— ${verses.reference}</p>
+                    <blockquote>
+                      <p>"${verses.text}"</p>
+                      <p>— ${verses.reference}</p>
                     </blockquote>
                     <p></p>
                   `)

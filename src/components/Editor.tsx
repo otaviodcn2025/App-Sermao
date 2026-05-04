@@ -13,7 +13,7 @@ import TableHeader from '@tiptap/extension-table-header';
 import TableCell from '@tiptap/extension-table-cell';
 import TaskList from '@tiptap/extension-task-list';
 import TaskItem from '@tiptap/extension-task-item';
-import { BibleReference } from '@/src/lib/TiptapBible';
+import { BibleReference } from '../lib/TiptapBible';
 import { useEffect, useState } from 'react';
 import { 
   Sparkles, 
@@ -48,8 +48,8 @@ import {
   MessageSquare
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { cn } from '@/src/lib/utils';
-import { exportToWord, exportToPdf } from '@/src/lib/export';
+import { cn } from '../lib/utils';
+import { exportToWord, exportToPdf } from '../lib/export';
 
 interface EditorProps {
   content: string;
@@ -68,7 +68,13 @@ export default function Editor({ content, onChange, onAiAction, title, onTitleCh
 
   const editor = useEditor({
     extensions: [
-      StarterKit,
+      StarterKit.configure({
+        blockquote: {
+          HTMLAttributes: {
+            class: 'bible-scripture',
+          },
+        },
+      }),
       Underline,
       TextAlign.configure({
         types: ['heading', 'paragraph'],
@@ -102,30 +108,6 @@ export default function Editor({ content, onChange, onAiAction, title, onTitleCh
     editorProps: {
       attributes: {
         class: 'prose prose-slate max-w-none focus:outline-none min-h-[70vh] px-4 lg:px-8 pb-12 bg-white selection:bg-orange-100',
-      },
-      handleDrop: (view, event, _slice, moved) => {
-        if (!moved && event.dataTransfer && event.dataTransfer.getData('application/bible-verse')) {
-          const data = JSON.parse(event.dataTransfer.getData('application/bible-verse'));
-          const { text, reference } = data;
-          
-          const { state } = view;
-          const pos = view.posAtCoords({ left: event.clientX, top: event.clientY })?.pos ?? state.selection.from;
-          
-          const content = `
-            <blockquote class="bible-scripture border-l-4 border-orange-500 pl-4 my-6 bg-orange-50/30 p-4 rounded-r-lg">
-              <p class="italic text-slate-700 leading-relaxed font-medium">"${text}"</p>
-              <p class="text-right text-xs font-bold text-orange-600 mt-2">— ${reference}</p>
-            </blockquote>
-            <p></p>
-          `;
-          
-          if (editor) {
-            editor.commands.insertContentAt(pos, content);
-          }
-          
-          return true;
-        }
-        return false;
       },
     },
   });
