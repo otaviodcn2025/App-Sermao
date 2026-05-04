@@ -1023,7 +1023,7 @@ export default function App() {
              mobileTab === 'library' ? "text-orange-600 scale-110" : "text-slate-400"
           )}
         >
-          <Book size={22} />
+          <Layout size={22} />
           <span className="text-[10px] font-bold uppercase tracking-wider">Biblioteca</span>
         </button>
         <div className="w-px h-8 bg-slate-100" />
@@ -1034,7 +1034,7 @@ export default function App() {
              mobileTab === 'bible' ? "text-orange-600 scale-110" : "text-slate-400"
           )}
         >
-          <Book size={22} />
+          <BookOpen size={22} />
           <span className="text-[10px] font-bold uppercase tracking-wider">Bíblia</span>
         </button>
       </nav>

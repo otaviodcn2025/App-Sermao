@@ -54,7 +54,7 @@ export default function Reader({ resource, onClose, onUpdatePosition, onAddHighl
   const lastSavedPosition = useRef<number>(resource.lastReadPosition || 0);
 
   // Handle Text Selection
-  const handleMouseUp = (e: React.MouseEvent) => {
+  const handleSelection = () => {
     const activeSelection = window.getSelection();
     if (!activeSelection || activeSelection.isCollapsed || !contentRef.current) {
       setSelection(null);
@@ -69,7 +69,11 @@ export default function Reader({ resource, onClose, onUpdatePosition, onAddHighl
       return;
     }
 
-    const rect = range.getBoundingClientRect();
+    const rects = range.getClientRects();
+    if (rects.length === 0) return;
+
+    // Use the last rect for the toolbar positioning (top of it)
+    const rect = rects[0];
     
     // Improved robust offset calculation
     const getSelectionOffset = (node: Node, offset: number, container: HTMLElement): number => {
@@ -100,6 +104,11 @@ export default function Reader({ resource, onClose, onUpdatePosition, onAddHighl
       });
     }
   };
+
+  useEffect(() => {
+    document.addEventListener('selectionchange', handleSelection);
+    return () => document.removeEventListener('selectionchange', handleSelection);
+  }, []);
 
   const addHighlight = (color: string) => {
     if (!selection) return;
@@ -268,6 +277,15 @@ export default function Reader({ resource, onClose, onUpdatePosition, onAddHighl
       onMouseMove={() => setShowControls(true)}
       onClick={() => setShowControls(true)}
     >
+      {/* Progress Bar */}
+      <div className="absolute top-0 left-0 right-0 h-1 z-[110] bg-black/5">
+        <motion.div 
+          initial={false}
+          animate={{ width: `${progress * 100}%` }}
+          className={cn("h-full transition-colors duration-500", currentTheme.progress)}
+        />
+      </div>
+
       {/* Top Bar Controls */}
       <AnimatePresence>
         {showControls && (
@@ -276,18 +294,18 @@ export default function Reader({ resource, onClose, onUpdatePosition, onAddHighl
             animate={{ y: 0 }}
             exit={{ y: -100 }}
             className={cn(
-              "absolute top-0 inset-x-0 h-16 border-b flex items-center justify-between px-6 z-10 backdrop-blur-md",
+              "absolute top-0 inset-x-0 h-16 md:h-20 border-b flex items-center justify-between px-4 md:px-8 z-10 backdrop-blur-md",
               currentTheme.ui
             )}
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 md:gap-4">
               <button 
                 onClick={onClose}
-                className="p-2 hover:bg-black/5 rounded-full transition-colors"
+                className="p-3 hover:bg-black/5 rounded-full transition-colors active:scale-95"
                 title="Sair da Leitura"
               >
-                <X size={20} />
+                <X size={24} />
               </button>
               <div className="hidden md:flex items-center gap-2">
                 <Bookmark size={14} className="text-orange-500" />
@@ -356,34 +374,41 @@ export default function Reader({ resource, onClose, onUpdatePosition, onAddHighl
             initial={{ opacity: 0, scale: 0.8, y: 10 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.8, y: 10 }}
-            className="fixed z-[200] flex bg-white rounded-2xl shadow-2xl p-1.5 border border-slate-100 items-center gap-1"
+            className="fixed z-[200] flex bg-white rounded-2xl shadow-2xl p-1.5 border border-slate-100 items-center gap-1 scroll-none"
             style={{ 
-              left: selection.x, 
-              top: selection.y - 60,
+              left: Math.max(160, Math.min(window.innerWidth - 160, selection.x)), 
+              top: Math.max(80, selection.y - 60),
               transform: 'translateX(-50%)' 
             }}
             onClick={(e) => e.stopPropagation()}
+            onPointerDown={(e) => e.stopPropagation()} // Stop it from clearing selection
           >
-            {HIGHLIGHT_COLORS.map((color) => (
-              <button
-                key={color.name}
-                onClick={() => addHighlight(color.value)}
-                className={cn(
-                  "w-10 h-10 rounded-xl transition-all hover:scale-110 active:scale-95 shadow-sm border border-black/5",
-                  color.bg
-                )}
-                title={color.name}
-              />
-            ))}
+            <div className="flex items-center gap-1 overflow-x-auto no-scrollbar max-w-[60vw]">
+              {HIGHLIGHT_COLORS.map((color) => (
+                <button
+                  key={color.name}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    addHighlight(color.value);
+                  }}
+                  className={cn(
+                    "w-8 h-8 sm:w-10 sm:h-10 rounded-xl transition-all hover:scale-110 active:scale-95 shadow-sm border border-black/5 shrink-0",
+                    color.bg
+                  )}
+                  title={color.name}
+                />
+              ))}
+            </div>
             <div className="w-px h-6 bg-slate-100 mx-1" />
             <button 
-              onClick={() => {
+              onClick={(e) => {
+                e.stopPropagation();
                 const text = selection.text;
                 navigator.clipboard.writeText(text);
                 setSelection(null);
                 window.getSelection()?.removeAllRanges();
               }}
-              className="px-4 h-10 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-900 transition-colors"
+              className="px-3 sm:px-4 h-8 sm:h-10 text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-900 transition-colors whitespace-nowrap"
             >
               Copiar
             </button>
@@ -395,8 +420,7 @@ export default function Reader({ resource, onClose, onUpdatePosition, onAddHighl
       <div 
         ref={scrollContainerRef}
         onScroll={handleScroll}
-        onMouseUp={handleMouseUp}
-        className="flex-1 overflow-y-auto px-6 py-24 md:py-40 scroll-smooth selection:bg-orange-200"
+        className="flex-1 overflow-y-auto px-4 md:px-6 py-20 md:py-40 scroll-smooth selection:bg-orange-200"
       >
         <div 
           className={cn(
@@ -410,15 +434,15 @@ export default function Reader({ resource, onClose, onUpdatePosition, onAddHighl
             lineHeight: lineHeight
           }}
         >
-          <div className="mb-24 text-center opacity-50">
-            <BookOpen size={64} className="mx-auto mb-6 text-orange-500/50" />
-            <h1 className="text-4xl font-black tracking-tighter leading-tight">{resource.title}</h1>
-            <p className="text-sm mt-4 font-bold uppercase tracking-[0.2em]">Recurso Pastoral</p>
+          <div className="mb-16 md:mb-24 text-center opacity-50 px-4">
+            <BookOpen size={48} className="md:size-16 mx-auto mb-4 md:mb-6 text-orange-500/50" />
+            <h1 className="text-2xl md:text-4xl font-black tracking-tighter leading-tight">{resource.title}</h1>
+            <p className="text-[10px] md:text-xs mt-3 md:mt-4 font-bold uppercase tracking-[0.2em]">Recurso Pastoral</p>
           </div>
           
           <div 
             ref={contentRef}
-            className="whitespace-pre-wrap select-text selection:bg-orange-200 selection:text-orange-950"
+            className="whitespace-pre-wrap select-text selection:bg-orange-200 selection:text-orange-950 px-2 sm:px-0"
           >
             {renderContent()}
           </div>
@@ -447,30 +471,30 @@ export default function Reader({ resource, onClose, onUpdatePosition, onAddHighl
             initial={{ y: 100, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: 100, opacity: 0 }}
-            className="absolute bottom-8 inset-x-0 flex justify-center z-10 px-4"
+            className="absolute bottom-6 md:bottom-8 inset-x-0 flex justify-center z-10 px-4"
             onClick={(e) => e.stopPropagation()}
           >
             <div className={cn(
-              "flex flex-col md:flex-row items-center gap-4 md:gap-8 px-6 py-4 rounded-[2.5rem] shadow-2xl border backdrop-blur-2xl transition-colors duration-500",
+              "flex flex-col md:flex-row items-center gap-3 md:gap-8 px-4 md:px-6 py-3 md:py-4 rounded-[2rem] md:rounded-[2.5rem] shadow-2xl border backdrop-blur-2xl transition-colors duration-500 w-full max-w-lg md:max-w-none",
               currentTheme.ui
             )}>
               {/* Font Family */}
-              <div className="flex bg-black/5 p-1 rounded-2xl">
+              <div className="flex bg-black/5 p-1 rounded-2xl w-full md:w-auto">
                 <button 
                   onClick={() => setFontFace('serif')}
-                  className={cn("px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all", fontFace === 'serif' ? (currentTheme.accent + " shadow-sm") : "opacity-50")}
+                  className={cn("flex-1 md:flex-none px-3 md:px-4 py-1.5 rounded-xl text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all text-center", fontFace === 'serif' ? (currentTheme.accent + " shadow-sm") : "opacity-50")}
                 >
                   Serif
                 </button>
                 <button 
                   onClick={() => setFontFace('sans')}
-                  className={cn("px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all", fontFace === 'sans' ? (currentTheme.accent + " shadow-sm") : "opacity-50")}
+                  className={cn("flex-1 md:flex-none px-3 md:px-4 py-1.5 rounded-xl text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all text-center", fontFace === 'sans' ? (currentTheme.accent + " shadow-sm") : "opacity-50")}
                 >
                   Sans
                 </button>
               </div>
 
-              <div className="hidden lg:flex bg-black/5 p-1 rounded-2xl">
+              <div className="hidden md:flex bg-black/5 p-1 rounded-2xl">
                 <button 
                   onClick={() => setTextAlign('left')}
                   className={cn("px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all", textAlign === 'left' ? (currentTheme.accent + " shadow-sm") : "opacity-50")}
@@ -487,46 +511,46 @@ export default function Reader({ resource, onClose, onUpdatePosition, onAddHighl
 
               <div className="hidden md:block w-px h-8 bg-black/10" />
 
-              <div className="flex items-center gap-8">
+              <div className="flex items-center justify-center gap-6 md:gap-8 w-full md:w-auto">
                 {/* Font Size */}
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2 md:gap-3">
                   <button 
                     onClick={() => setFontSize(Math.max(12, fontSize - 2))}
-                    className="w-8 h-8 flex items-center justify-center hover:bg-black/5 rounded-full transition-colors border border-black/5"
+                    className="w-7 h-7 md:w-8 md:h-8 flex items-center justify-center hover:bg-black/5 rounded-full transition-colors border border-black/5"
                   >
-                    <Minus size={14} />
+                    <Minus size={12} />
                   </button>
-                  <div className="flex flex-col items-center min-w-[40px]">
-                    <span className="text-[10px] font-black uppercase tracking-tighter opacity-40">Fonte</span>
-                    <span className="text-xs font-black">{fontSize}</span>
+                  <div className="flex flex-col items-center min-w-[32px] md:min-w-[40px]">
+                    <span className="text-[8px] md:text-[10px] font-black uppercase tracking-tighter opacity-40">Fonte</span>
+                    <span className="text-[10px] md:text-xs font-black">{fontSize}</span>
                   </div>
                   <button 
                     onClick={() => setFontSize(Math.min(48, fontSize + 2))}
-                    className="w-8 h-8 flex items-center justify-center hover:bg-black/5 rounded-full transition-colors border border-black/5"
+                    className="w-7 h-7 md:w-8 md:h-8 flex items-center justify-center hover:bg-black/5 rounded-full transition-colors border border-black/5"
                   >
-                    <Plus size={14} />
+                    <Plus size={12} />
                   </button>
                 </div>
 
                 <div className="w-px h-6 bg-black/10" />
 
                 {/* Line Height */}
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2 md:gap-3">
                   <button 
                     onClick={() => setLineHeight(Math.max(1.2, lineHeight - 0.1))}
-                    className="w-8 h-8 flex items-center justify-center hover:bg-black/5 rounded-full transition-colors border border-black/5"
+                    className="w-7 h-7 md:w-8 md:h-8 flex items-center justify-center hover:bg-black/5 rounded-full transition-colors border border-black/5"
                   >
-                    <Minus size={14} />
+                    <Minus size={12} />
                   </button>
-                  <div className="flex flex-col items-center min-w-[40px]">
-                    <span className="text-[10px] font-black uppercase tracking-tighter opacity-40">Espaço</span>
-                    <span className="text-xs font-black">{lineHeight.toFixed(1)}</span>
+                  <div className="flex flex-col items-center min-w-[32px] md:min-w-[40px]">
+                    <span className="text-[8px] md:text-[10px] font-black uppercase tracking-tighter opacity-40">Espaço</span>
+                    <span className="text-[10px] md:text-xs font-black">{lineHeight.toFixed(1)}</span>
                   </div>
                   <button 
                     onClick={() => setLineHeight(Math.min(2.4, lineHeight + 0.1))}
-                    className="w-8 h-8 flex items-center justify-center hover:bg-black/5 rounded-full transition-colors border border-black/5"
+                    className="w-7 h-7 md:w-8 md:h-8 flex items-center justify-center hover:bg-black/5 rounded-full transition-colors border border-black/5"
                   >
-                    <Plus size={14} />
+                    <Plus size={12} />
                   </button>
                 </div>
               </div>

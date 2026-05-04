@@ -195,277 +195,155 @@ export default function Editor({ content, onChange, onAiAction, title, onTitleCh
   };
 
   return (
-    <div className="relative w-full border border-slate-200 rounded-xl bg-white shadow-lg overflow-hidden flex flex-col">
+    <div className="relative w-full border border-slate-200 rounded-xl bg-white shadow-lg overflow-hidden flex flex-col h-full">
       {/* Word-like Toolbar */}
-      <div className="border-b border-slate-200 p-1 flex flex-wrap items-center gap-0.5 bg-slate-50 sticky top-0 z-20">
-        <div className="flex items-center gap-0.5 px-1 border-r border-slate-200">
-          <button
-            // @ts-ignore
-            onClick={() => editor.chain().focus().undo().run()}
-            // @ts-ignore
-            disabled={!editor.can().undo()}
-            className="p-1.5 rounded hover:bg-slate-200 transition-colors disabled:opacity-30"
-            title="Desfazer"
-          >
-            <Undo size={16} />
-          </button>
-          <button
-            // @ts-ignore
-            onClick={() => editor.chain().focus().redo().run()}
-            // @ts-ignore
-            disabled={!editor.can().redo()}
-            className="p-1.5 rounded hover:bg-slate-200 transition-colors disabled:opacity-30"
-            title="Refazer"
-          >
-            <Redo size={16} />
-          </button>
-        </div>
+      <div className="border-b border-slate-200 p-1 flex items-center bg-slate-50 sticky top-0 z-20 overflow-x-auto no-scrollbar">
+        <div className="flex items-center gap-0.5 min-w-max">
+          <div className="flex items-center gap-0.5 px-1 border-r border-slate-200">
+            <button
+              // @ts-ignore
+              onClick={() => editor.chain().focus().undo().run()}
+              // @ts-ignore
+              disabled={!editor.can().undo()}
+              className="p-1.5 rounded hover:bg-slate-200 transition-colors disabled:opacity-30"
+              title="Desfazer"
+            >
+              <Undo size={16} />
+            </button>
+            <button
+              // @ts-ignore
+              onClick={() => editor.chain().focus().redo().run()}
+              // @ts-ignore
+              disabled={!editor.can().redo()}
+              className="p-1.5 rounded hover:bg-slate-200 transition-colors disabled:opacity-30"
+              title="Refazer"
+            >
+              <Redo size={16} />
+            </button>
+          </div>
 
-        <div className="flex items-center gap-0.5 px-1 border-r border-slate-200">
-          <button
-            // @ts-ignore
-            onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
-            className={cn("p-1.5 rounded hover:bg-slate-200 transition-colors", editor.isActive('heading', { level: 1 }) && "bg-slate-200 text-orange-600")}
-            title="Título 1"
-          >
-            <Heading1 size={16} />
-          </button>
-          <button
-            // @ts-ignore
-            onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
-            className={cn("p-1.5 rounded hover:bg-slate-200 transition-colors", editor.isActive('heading', { level: 2 }) && "bg-slate-200 text-orange-600")}
-            title="Título 2"
-          >
-            <Heading2 size={16} />
-          </button>
-        </div>
+          <div className="flex items-center gap-0.5 px-1 border-r border-slate-200">
+            <button
+              // @ts-ignore
+              onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
+              className={cn("p-1.5 rounded hover:bg-slate-200 transition-colors", editor.isActive('heading', { level: 1 }) && "bg-slate-200 text-orange-600")}
+              title="Título 1"
+            >
+              <Heading1 size={16} />
+            </button>
+            <button
+              // @ts-ignore
+              onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
+              className={cn("p-1.5 rounded hover:bg-slate-200 transition-colors", editor.isActive('heading', { level: 2 }) && "bg-slate-200 text-orange-600")}
+              title="Título 2"
+            >
+              <Heading2 size={16} />
+            </button>
+          </div>
 
-        <div className="flex items-center gap-0.5 px-1 border-r border-slate-200">
-          <button
-            // @ts-ignore
-            onClick={() => editor.chain().focus().toggleBold().run()}
-            className={cn("p-1.5 rounded hover:bg-slate-200 transition-colors font-bold", editor.isActive('bold') && "bg-slate-200 text-orange-600")}
-            title="Negrito"
-          >
-            <Bold size={16} />
-          </button>
-          <button
-            // @ts-ignore
-            onClick={() => editor.chain().focus().toggleItalic().run()}
-            className={cn("p-1.5 rounded hover:bg-slate-200 transition-colors italic", editor.isActive('italic') && "bg-slate-200 text-orange-600")}
-            title="Itálico"
-          >
-            <Italic size={16} />
-          </button>
-          <button
-            // @ts-ignore
-            onClick={() => editor.chain().focus().toggleUnderline().run()}
-            className={cn("p-1.5 rounded hover:bg-slate-200 transition-colors", editor.isActive('underline') && "bg-slate-200 text-orange-600")}
-            title="Sublinhado"
-          >
-            <UnderlineIcon size={16} />
-          </button>
-          <button
-            // @ts-ignore
-            onClick={() => editor.chain().focus().toggleStrike().run()}
-            className={cn("p-1.5 rounded hover:bg-slate-200 transition-colors", editor.isActive('strike') && "bg-slate-200 text-orange-600")}
-            title="Riscado"
-          >
-            <Strikethrough size={16} />
-          </button>
-          <button
-            // @ts-ignore
-            onClick={() => editor.chain().focus().toggleHighlight().run()}
-            className={cn("p-1.5 rounded hover:bg-slate-200 transition-colors", editor.isActive('highlight') && "bg-slate-200 text-orange-600")}
-            title="Destacar"
-          >
-            <Highlighter size={16} />
-          </button>
-          <button
-            // @ts-ignore
-            onClick={() => editor.chain().focus().toggleCode().run()}
-            className={cn("p-1.5 rounded hover:bg-slate-200 transition-colors", editor.isActive('code') && "bg-slate-200 text-orange-600")}
-            title="Código"
-          >
-            <Code size={16} />
-          </button>
-        </div>
+          <div className="flex items-center gap-0.5 px-1 border-r border-slate-200">
+            <button
+              // @ts-ignore
+              onClick={() => editor.chain().focus().toggleBold().run()}
+              className={cn("p-1.5 rounded hover:bg-slate-200 transition-colors font-bold", editor.isActive('bold') && "bg-slate-200 text-orange-600")}
+              title="Negrito"
+            >
+              <Bold size={16} />
+            </button>
+            <button
+              // @ts-ignore
+              onClick={() => editor.chain().focus().toggleItalic().run()}
+              className={cn("p-1.5 rounded hover:bg-slate-200 transition-colors italic", editor.isActive('italic') && "bg-slate-200 text-orange-600")}
+              title="Itálico"
+            >
+              <Italic size={16} />
+            </button>
+            <button
+              // @ts-ignore
+              onClick={() => editor.chain().focus().toggleUnderline().run()}
+              className={cn("p-1.5 rounded hover:bg-slate-200 transition-colors", editor.isActive('underline') && "bg-slate-200 text-orange-600")}
+              title="Sublinhado"
+            >
+              <UnderlineIcon size={16} />
+            </button>
+          </div>
 
-        <div className="flex items-center gap-0.5 px-1 border-r border-slate-200">
-          <button
-            // @ts-ignore
-            onClick={() => editor.chain().focus().setTextAlign('left').run()}
-            className={cn("p-1.5 rounded hover:bg-slate-200 transition-colors", editor.isActive({ textAlign: 'left' }) && "bg-slate-200 text-orange-600")}
-            title="Alinhar à Esquerda"
-          >
-            <AlignLeft size={16} />
-          </button>
-          <button
-            // @ts-ignore
-            onClick={() => editor.chain().focus().setTextAlign('center').run()}
-            className={cn("p-1.5 rounded hover:bg-slate-200 transition-colors", editor.isActive({ textAlign: 'center' }) && "bg-slate-200 text-orange-600")}
-            title="Centralizar"
-          >
-            <AlignCenter size={16} />
-          </button>
-          <button
-            // @ts-ignore
-            onClick={() => editor.chain().focus().setTextAlign('right').run()}
-            className={cn("p-1.5 rounded hover:bg-slate-200 transition-colors", editor.isActive({ textAlign: 'right' }) && "bg-slate-200 text-orange-600")}
-            title="Alinhar à Direita"
-          >
-            <AlignRight size={16} />
-          </button>
-        </div>
+          <div className="flex items-center gap-0.5 px-1 border-r border-slate-200">
+            <button
+              // @ts-ignore
+              onClick={() => editor.chain().focus().setTextAlign('left').run()}
+              className={cn("p-1.5 rounded hover:bg-slate-200 transition-colors", editor.isActive({ textAlign: 'left' }) && "bg-slate-200 text-orange-600")}
+              title="Alinhar à Esquerda"
+            >
+              <AlignLeft size={16} />
+            </button>
+            <button
+              // @ts-ignore
+              onClick={() => editor.chain().focus().setTextAlign('center').run()}
+              className={cn("p-1.5 rounded hover:bg-slate-200 transition-colors", editor.isActive({ textAlign: 'center' }) && "bg-slate-200 text-orange-600")}
+              title="Centralizar"
+            >
+              <AlignCenter size={16} />
+            </button>
+          </div>
 
-        <div className="flex items-center gap-0.5 px-1 border-r border-slate-200">
-          <button
-            // @ts-ignore
-            onClick={() => editor.chain().focus().toggleBulletList().run()}
-            className={cn("p-1.5 rounded hover:bg-slate-200 transition-colors", editor.isActive('bulletList') && "bg-slate-200 text-orange-600")}
-            title="Lista com Marcadores"
-          >
-            <List size={16} />
-          </button>
-          <button
-            // @ts-ignore
-            onClick={() => editor.chain().focus().toggleOrderedList().run()}
-            className={cn("p-1.5 rounded hover:bg-slate-200 transition-colors", editor.isActive('orderedList') && "bg-slate-200 text-orange-600")}
-            title="Lista Numerada"
-          >
-            <ListOrdered size={16} />
-          </button>
-          <button
-            // @ts-ignore
-            onClick={() => editor.chain().focus().toggleTaskList().run()}
-            className={cn("p-1.5 rounded hover:bg-slate-200 transition-colors", editor.isActive('taskList') && "bg-slate-200 text-orange-600")}
-            title="Lista de Tarefas"
-          >
-            <CheckSquare size={16} />
-          </button>
-        </div>
+          <div className="flex items-center gap-1 ml-1 px-1">
+            <button
+              onClick={() => insertSpecialBlock('illustration')}
+              className="px-2 py-1 bg-amber-50 text-amber-700 text-[9px] font-black uppercase rounded border border-amber-100 hover:bg-amber-100 transition-colors shrink-0"
+            >
+              Ilustração
+            </button>
+            <button
+              onClick={() => insertSpecialBlock('application')}
+              className="px-2 py-1 bg-emerald-50 text-emerald-700 text-[9px] font-black uppercase rounded border border-emerald-100 hover:bg-emerald-100 transition-colors shrink-0"
+            >
+              Aplicação
+            </button>
+          </div>
 
-        <div className="flex items-center gap-0.5 px-1 border-r border-slate-200">
-          <button
-            // @ts-ignore
-            onClick={() => editor.chain().focus().toggleBlockquote().run()}
-            className={cn("p-1.5 rounded hover:bg-slate-200 transition-colors", editor.isActive('blockquote') && "bg-slate-200 text-orange-600")}
-            title="Citação"
-          >
-            <Quote size={16} />
-          </button>
-          <button
-            onClick={setLink}
-            className={cn("p-1.5 rounded hover:bg-slate-200 transition-colors", editor.isActive('link') && "bg-slate-200 text-orange-600")}
-            title="Link"
-          >
-            <LinkIcon size={16} />
-          </button>
-          <button
-            // @ts-ignore
-            onClick={() => editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()}
-            className={cn("p-1.5 rounded hover:bg-slate-200 transition-colors")}
-            title="Inserir Tabela"
-          >
-            <TableIcon size={16} />
-          </button>
-          <button
-            // @ts-ignore
-            onClick={() => editor.chain().focus().setHorizontalRule().run()}
-            className={cn("p-1.5 rounded hover:bg-slate-200 transition-colors")}
-            title="Linha Horizontal"
-          >
-            <Minus size={16} />
-          </button>
-        </div>
-
-        <div className="flex items-center gap-0.5 px-1 bg-orange-50/50 rounded-lg mx-1 border border-orange-100">
-          <button
-            onClick={() => insertSpecialBlock('illustration')}
-            className="flex items-center gap-1 px-2 py-1.5 rounded hover:bg-amber-100 text-amber-700 transition-all text-[10px] font-black uppercase tracking-wider"
-            title="Inserir Ilustração"
-          >
-            <Lightbulb size={14} className="text-amber-500" />
-            <span className="hidden lg:inline">Ilustração</span>
-          </button>
-          <button
-            onClick={() => insertSpecialBlock('application')}
-            className="flex items-center gap-1 px-2 py-1.5 rounded hover:bg-emerald-100 text-emerald-700 transition-all text-[10px] font-black uppercase tracking-wider"
-            title="Inserir Aplicação"
-          >
-            <Zap size={14} className="text-emerald-500" />
-            <span className="hidden lg:inline">Aplicação</span>
-          </button>
-          <button
-            onClick={() => insertSpecialBlock('exegese')}
-            className="flex items-center gap-1 px-2 py-1.5 rounded hover:bg-blue-100 text-blue-700 transition-all text-[10px] font-black uppercase tracking-wider"
-            title="Inserir Exegese"
-          >
-            <BookOpen size={14} className="text-blue-500" />
-            <span className="hidden lg:inline">Exegese</span>
-          </button>
-        </div>
-
-        <div className="ml-auto flex items-center gap-1.5 px-1 border-l border-slate-200">
-          <button
-            onClick={handleCopyText}
-            className={cn(
-              "flex items-center gap-2 px-3 py-1.5 rounded-md transition-all text-xs font-bold shadow-sm",
-              copied ? "bg-emerald-50 text-emerald-600 border border-emerald-200" : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-            )}
-            title="Copiar Texto"
-          >
-            {copied ? <Check size={14} /> : <Copy size={14} />}
-            <span className="hidden sm:inline">{copied ? "Copiado!" : "Copiar"}</span>
-          </button>
-          <button
-            onClick={handleShare}
-            className="flex items-center gap-2 px-3 py-1.5 bg-orange-600 text-white rounded-md hover:bg-orange-700 transition-colors text-xs font-bold shadow-sm"
-            title="Compartilhar"
-          >
-            <Share2 size={14} />
-            <span className="hidden sm:inline">Compartilhar</span>
-          </button>
-          <div className="w-px h-6 bg-slate-200 mx-0.5" />
-          <button
-            onClick={() => exportToWord(title, editor.getHTML())}
-            className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-xs font-bold shadow-sm"
-            title="Baixar para Word (.docx)"
-          >
-            <FileDown size={14} />
-            <span className="hidden sm:inline">Word</span>
-          </button>
-          <button
-            onClick={() => exportToPdf(title, editor.getHTML())}
-            className="flex items-center gap-2 px-3 py-1.5 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors text-xs font-bold shadow-sm"
-            title="Baixar para PDF (.pdf)"
-          >
-            <FileDown size={14} />
-            <span className="hidden sm:inline">PDF</span>
-          </button>
+          <div className="ml-auto flex items-center gap-1.5 px-1 border-l border-slate-200">
+            <button
+              onClick={handleCopyText}
+              className={cn(
+                "flex items-center gap-2 px-3 py-1.5 rounded-md transition-all text-[10px] font-bold shadow-sm shrink-0",
+                copied ? "bg-emerald-50 text-emerald-600 border border-emerald-200" : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+              )}
+            >
+              {copied ? <Check size={14} /> : <Copy size={14} />}
+              <span className="hidden sm:inline">{copied ? "Copiado!" : "Copiar"}</span>
+            </button>
+            <button
+              onClick={handleShare}
+              className="flex items-center gap-2 px-3 py-1.5 bg-orange-600 text-white rounded-md hover:bg-orange-700 transition-colors text-[10px] font-bold shadow-sm shrink-0"
+            >
+              <Share2 size={14} />
+              <span className="hidden sm:inline">Partilhar</span>
+            </button>
+          </div>
         </div>
       </div>
 
       <div className="flex-1 overflow-y-auto">
-        <div className="px-4 lg:px-8 pt-12">
-          <div className="flex items-center justify-between gap-4 mb-2">
+        <div className="px-4 lg:px-8 pt-6 sm:pt-12">
+          <div className="flex items-center justify-between gap-2 sm:gap-4 mb-2">
             <input 
               type="text"
               value={title}
               onChange={(e) => onTitleChange(e.target.value)}
               placeholder="Título do Sermão"
-              className="flex-1 text-2xl lg:text-4xl font-black text-slate-900 border-none focus:ring-0 placeholder:text-slate-200 bg-transparent"
+              className="flex-1 text-xl sm:text-2xl lg:text-4xl font-black text-slate-900 border-none focus:ring-0 placeholder:text-slate-200 bg-transparent min-w-0"
             />
             <button
               onClick={() => onAiAction('titles', '')}
-              className="flex items-center gap-2 px-3 py-1.5 bg-orange-100 text-orange-700 rounded-lg hover:bg-orange-200 transition-all text-[10px] font-black uppercase tracking-wider shrink-0 shadow-sm"
+              className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1 sm:py-1.5 bg-orange-100 text-orange-700 rounded-lg hover:bg-orange-200 transition-all text-[9px] sm:text-[10px] font-black uppercase tracking-wider shrink-0 shadow-sm"
               title="Gerar Sugestões de Título"
             >
               <Wand2 size={14} />
               <span className="hidden sm:inline">IA Títulos</span>
             </button>
           </div>
-          <div className="w-20 h-1.5 bg-orange-500 rounded-full mb-8" />
+          <div className="w-16 sm:w-20 h-1 sm:h-1.5 bg-orange-500 rounded-full mb-6 sm:mb-8" />
         </div>
         <EditorContent editor={editor} />
         
@@ -476,10 +354,10 @@ export default function Editor({ content, onChange, onAiAction, title, onTitleCh
               initial={{ opacity: 0, y: 10, scale: 0.9 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, scale: 0.9 }}
-              className="fixed z-[100] w-64 bg-slate-900 text-white rounded-xl shadow-2xl p-4 border border-slate-700 pointer-events-auto"
+              className="fixed z-[100] w-[85vw] sm:w-64 bg-slate-900 text-white rounded-xl shadow-2xl p-4 border border-slate-700 pointer-events-auto"
               style={{ 
-                left: Math.min(lexiconTooltip.pos.left, window.innerWidth - 280), 
-                top: lexiconTooltip.pos.top - 180
+                left: Math.max(10, Math.min(lexiconTooltip.pos.left, window.innerWidth - (window.innerWidth < 640 ? window.innerWidth * 0.9 : 280))), 
+                top: Math.max(80, lexiconTooltip.pos.top - 180)
               }}
               onMouseEnter={() => {}} // Keep open when hovering the tooltip itself if needed
             >
