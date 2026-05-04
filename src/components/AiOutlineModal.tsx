@@ -9,7 +9,9 @@ import {
   Trash2,
   BookOpen,
   Info,
-  Zap
+  Zap,
+  History,
+  Clock
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '@/src/lib/utils';

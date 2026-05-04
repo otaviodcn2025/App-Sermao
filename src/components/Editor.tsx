@@ -14,6 +14,8 @@ import TableCell from '@tiptap/extension-table-cell';
 import TaskList from '@tiptap/extension-task-list';
 import TaskItem from '@tiptap/extension-task-item';
 import { BibleReference } from '../lib/TiptapBible';
+import { Lexicon } from '../lib/TiptapLexicon';
+import { LexiconTerm } from '../constants/lexicon';
 import { useEffect, useState } from 'react';
 import { 
   Sparkles, 
@@ -68,6 +70,7 @@ export default function Editor({ content, onChange, onAiAction, title, onTitleCh
   const [showShareMenu, setShowShareMenu] = useState(false);
   const [copied, setCopied] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
+  const [lexiconTooltip, setLexiconTooltip] = useState<{ term: LexiconTerm, pos: { left: number, top: number } } | null>(null);
 
   const editor = useEditor({
     extensions: [
@@ -102,6 +105,10 @@ export default function Editor({ content, onChange, onAiAction, title, onTitleCh
         placeholder: 'Comece a escrever seu sermão aqui... Use a barra de ferramentas acima para formatar.',
       }),
       BibleReference,
+      Lexicon.configure({
+        onHover: (term, pos) => setLexiconTooltip({ term, pos }),
+        onLeave: () => setLexiconTooltip(null),
+      }),
     ] as any[],
     content,
     editable: !readOnly,
@@ -461,6 +468,50 @@ export default function Editor({ content, onChange, onAiAction, title, onTitleCh
           <div className="w-20 h-1.5 bg-orange-500 rounded-full mb-8" />
         </div>
         <EditorContent editor={editor} />
+        
+        {/* Lexicon Tooltip */}
+        <AnimatePresence>
+          {lexiconTooltip && (
+            <motion.div
+              initial={{ opacity: 0, y: 10, scale: 0.9 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              className="fixed z-[100] w-64 bg-slate-900 text-white rounded-xl shadow-2xl p-4 border border-slate-700 pointer-events-auto"
+              style={{ 
+                left: Math.min(lexiconTooltip.pos.left, window.innerWidth - 280), 
+                top: lexiconTooltip.pos.top - 180
+              }}
+              onMouseEnter={() => {}} // Keep open when hovering the tooltip itself if needed
+            >
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-[10px] font-black uppercase tracking-widest text-orange-400 bg-orange-400/10 px-2 py-0.5 rounded">
+                  {lexiconTooltip.term.language}
+                </span>
+                <span className="font-serif text-lg text-slate-300">{lexiconTooltip.term.original}</span>
+              </div>
+              
+              <h4 className="font-black text-sm mb-1">{lexiconTooltip.term.term}: <span className="text-orange-300 font-bold">{lexiconTooltip.term.meaning}</span></h4>
+              <p className="text-[11px] text-slate-400 leading-relaxed mb-4">
+                {lexiconTooltip.term.explanation}
+              </p>
+              
+              <button
+                onClick={() => {
+                  if (editor) {
+                    editor.commands.insertContent(` (${lexiconTooltip.term.term}: ${lexiconTooltip.term.meaning}) `);
+                    setLexiconTooltip(null);
+                  }
+                }}
+                className="w-full py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-lg text-[10px] font-black uppercase tracking-tighter transition-all flex items-center justify-center gap-2"
+              >
+                <Zap size={12} />
+                Inserir Significado
+              </button>
+
+              <div className="absolute -bottom-2 left-6 w-4 h-4 bg-slate-900 border-r border-b border-slate-700 rotate-45" />
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       {editor && (
