@@ -35,6 +35,68 @@ interface LibraryProps {
   userApproved: boolean;
 }
 
+// Componente de Capa de Livro Gerada Dinamicamente
+function BookCover({ title, type }: { title: string, type: 'pdf' | 'epub' | 'link' }) {
+  const colors = [
+    'from-slate-700 to-slate-900',
+    'from-blue-700 to-blue-900',
+    'from-emerald-700 to-emerald-900',
+    'from-indigo-700 to-indigo-900',
+    'from-violet-700 to-violet-900',
+    'from-orange-700 to-orange-900',
+    'from-rose-700 to-rose-900',
+    'from-amber-700 to-amber-900',
+  ];
+
+  // Gera um índice determinístico baseado no título
+  const colorIndex = title.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % colors.length;
+  const color = colors[colorIndex];
+
+  return (
+    <div className={cn(
+      "relative w-full aspect-[3/4] rounded-xl overflow-hidden shadow-lg group-hover:shadow-2xl transition-all duration-500 bg-gradient-to-br",
+      color
+    )}>
+      {/* Detalhes da Capa */}
+      <div className="absolute inset-0 opacity-20 pointer-events-none">
+        <div className="absolute top-0 left-4 w-px h-full bg-white/30" />
+        <div className="absolute top-0 right-4 w-px h-full bg-white/30" />
+      </div>
+
+      <div className="absolute inset-0 flex flex-col p-4 justify-between">
+        <div className="space-y-1">
+          <div className="flex items-center gap-1.5">
+            <div className="w-5 h-5 rounded-md bg-white/20 flex items-center justify-center backdrop-blur-sm">
+              <Book size={10} className="text-white" />
+            </div>
+            <span className="text-[9px] font-black uppercase tracking-[0.2em] text-white/60">
+              {type === 'epub' ? 'ePub Edition' : 'Digital Volume'}
+            </span>
+          </div>
+        </div>
+
+        <div className="space-y-3">
+          <h4 className="text-white font-black text-sm leading-tight tracking-tight line-clamp-4 drop-shadow-md">
+            {title}
+          </h4>
+          <div className="h-0.5 w-8 bg-white/40 rounded-full" />
+        </div>
+
+        <div className="flex items-center justify-between">
+          <div className="text-[8px] font-bold text-white/40 uppercase tracking-widest">
+            Logos AI Lib
+          </div>
+          <FileText size={14} className="text-white/30" />
+        </div>
+      </div>
+      
+      {/* Efeito de brilho/luz */}
+      <div className="absolute inset-0 bg-gradient-to-tr from-white/0 via-white/5 to-white/20 pointer-events-none" />
+      <div className="absolute -inset-full group-hover:translate-x-full group-hover:translate-y-full bg-gradient-to-br from-white/0 via-white/10 to-white/0 transition-all duration-1000 rotate-45 pointer-events-none" />
+    </div>
+  );
+}
+
 export default function Library({ resources, onUpload, onDelete, userApproved }: LibraryProps) {
   const [isUploading, setIsUploading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -240,7 +302,7 @@ export default function Library({ resources, onUpload, onDelete, userApproved }:
         />
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
         <AnimatePresence mode="popLayout">
           {filteredResources.map((resource) => (
             <motion.div
@@ -249,53 +311,56 @@ export default function Library({ resources, onUpload, onDelete, userApproved }:
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.9 }}
-              className="group relative bg-white p-5 rounded-3xl border border-slate-100 shadow-sm hover:shadow-xl hover:shadow-slate-200/50 transition-all"
+              className="group flex flex-col gap-3"
             >
-              <div className="flex items-start gap-4">
-                <div className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-400 group-hover:bg-orange-50 group-hover:text-orange-600 transition-colors">
-                  <FileText size={24} />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-bold text-slate-800 truncate leading-tight mb-1">{resource.title}</h3>
-                  <div className="flex items-center gap-2">
-                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                      {resource.type === 'epub' ? 'ePub' : 'PDF'}
-                    </span>
-                    <span className="w-1 h-1 bg-slate-200 rounded-full" />
-                    {resource.lastReadPosition !== undefined && resource.lastReadPosition > 0 && (
-                      <>
-                        <span className="flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-orange-500">
-                          <Bookmark size={10} /> {Math.round(resource.lastReadPosition * 100)}% Lidos
-                        </span>
-                        <span className="w-1 h-1 bg-slate-200 rounded-full" />
-                      </>
-                    )}
-                    <span className="text-[10px] font-bold text-slate-400">
-                      {new Date(resource.createdAt).toLocaleDateString('pt-BR')}
-                    </span>
-                  </div>
-                </div>
+              <div 
+                onClick={() => setSelectedResource(resource)}
+                className="cursor-pointer"
+              >
+                <BookCover title={resource.title} type={resource.type} />
               </div>
 
-              <div className="mt-6 flex items-center justify-between">
-                <div className="flex items-center gap-1">
-                  <CheckCircle2 size={14} className="text-emerald-500" />
-                  <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest">Pronto para IA</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <button
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between gap-2 mb-1">
+                  <h3 
                     onClick={() => setSelectedResource(resource)}
-                    className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all"
-                    title="Visualizar"
+                    className="font-bold text-slate-800 text-sm truncate cursor-pointer hover:text-orange-600 transition-colors"
                   >
-                    <Eye size={18} />
-                  </button>
+                    {resource.title}
+                  </h3>
                   <button
                     onClick={() => onDelete(resource.id)}
-                    className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all"
+                    className="p-1.5 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all opacity-0 group-hover:opacity-100"
                     title="Excluir"
                   >
-                    <Trash2 size={18} />
+                    <Trash2 size={12} />
+                  </button>
+                </div>
+                
+                <div className="flex items-center gap-2">
+                  <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">
+                    {resource.type === 'epub' ? 'ePub' : 'PDF'}
+                  </span>
+                  {resource.lastReadPosition !== undefined && resource.lastReadPosition > 0 && (
+                    <span className="flex items-center gap-0.5 text-[9px] font-black uppercase tracking-widest text-orange-500">
+                      <Bookmark size={8} /> {Math.round(resource.lastReadPosition * 100)}%
+                    </span>
+                  )}
+                  <span className="text-[9px] font-bold text-slate-300 ml-auto">
+                    {new Date(resource.createdAt).toLocaleDateString('pt-BR')}
+                  </span>
+                </div>
+
+                <div className="mt-3 pt-3 border-t border-slate-50 flex items-center justify-between">
+                  <div className="flex items-center gap-1.5 opacity-50 group-hover:opacity-100 transition-opacity">
+                    <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full" />
+                    <span className="text-[8px] font-black text-emerald-600 uppercase tracking-widest">Indexado</span>
+                  </div>
+                  <button
+                    onClick={() => setSelectedResource(resource)}
+                    className="text-[9px] font-black text-orange-600 uppercase tracking-widest flex items-center gap-1 hover:gap-2 transition-all"
+                  >
+                    Abrir <Eye size={10} />
                   </button>
                 </div>
               </div>
