@@ -420,11 +420,11 @@ export default function Reader({ resource, onClose, onUpdatePosition, onAddHighl
       <div 
         ref={scrollContainerRef}
         onScroll={handleScroll}
-        className="flex-1 overflow-y-auto px-4 md:px-6 py-20 md:py-40 scroll-smooth selection:bg-orange-200"
+        className="flex-1 overflow-y-auto px-4 md:px-12 py-12 md:py-32 scroll-smooth selection:bg-orange-200"
       >
         <div 
           className={cn(
-            "max-w-3xl mx-auto transition-all duration-300 break-words hyphens-auto",
+            "max-w-prose mx-auto transition-all duration-300 break-words hyphens-auto px-4 sm:px-0 text-pretty",
             fonts[fontFace],
             textAlign === 'left' ? 'text-left' : 'text-justify',
             currentTheme.text
