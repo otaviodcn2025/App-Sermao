@@ -128,7 +128,21 @@ export default function Reader({ resource, onClose, onUpdatePosition, onAddHighl
 
   // Helper to render text with highlights
   const renderContent = () => {
-    const text = resource.extractedText || '';
+    let rawText = resource.extractedText || '';
+    
+    // SMART TEXT CLEANING: 
+    // Usually, extracted PDF/ePub text has hard line breaks at every line.
+    // We try to join these if they don't seem to be intentional paragraphs.
+    const cleanExtractedText = (text: string) => {
+      if (!text) return '';
+      // Always clean for consistent formatting; highlights will be relative to this cleaned text
+      const paragraphs = text.split(/\n\s*\n/);
+      return paragraphs
+        .map(p => p.replace(/(?<!\n)\n(?!\n)/g, ' ').replace(/\s+/g, ' ').trim())
+        .join('\n\n');
+    };
+
+    const text = cleanExtractedText(rawText);
     const highlights = resource.highlights || [];
     
     if (highlights.length === 0) return text;
@@ -424,7 +438,7 @@ export default function Reader({ resource, onClose, onUpdatePosition, onAddHighl
       >
         <div 
           className={cn(
-            "max-w-prose mx-auto transition-all duration-300 break-words hyphens-auto px-4 sm:px-0 text-pretty",
+            "max-w-3xl mx-auto transition-all duration-300 break-normal px-4 sm:px-0 text-pretty",
             fonts[fontFace],
             textAlign === 'left' ? 'text-left' : 'text-justify',
             currentTheme.text
