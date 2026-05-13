@@ -18,6 +18,27 @@ if (container) {
         </ErrorBoundary>
       </StrictMode>,
     );
+
+    // Registra o Service Worker para suporte PWA e cache
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js').then(reg => {
+          reg.onupdatefound = () => {
+            const installingWorker = reg.installing;
+            if (installingWorker) {
+              installingWorker.onstatechange = () => {
+                if (installingWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                  console.log('Nova versão encontrada! Forçando atualização...');
+                  if (confirm('Uma nova versão do ConectaSermon está disponível. Atualizar agora?')) {
+                    window.location.reload();
+                  }
+                }
+              };
+            }
+          };
+        }).catch(err => console.error('Erro ao registrar SW:', err));
+      });
+    }
   } catch (err) {
     console.error("Fatal render error:", err);
     // Fallback UI if possible

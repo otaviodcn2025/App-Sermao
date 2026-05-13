@@ -21,7 +21,8 @@ import {
   X,
   List,
   Book,
-  Download
+  Download,
+  RefreshCcw
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import Editor from './components/Editor';
@@ -349,6 +350,24 @@ export default function App() {
     }
   };
 
+  const forceUpdate = async () => {
+    if (confirm('Deseja forçar a limpeza do cache e carregar a versão mais recente?')) {
+      try {
+        if ('serviceWorker' in navigator) {
+          const regs = await navigator.serviceWorker.getRegistrations();
+          for(let reg of regs) {
+            await reg.unregister();
+          }
+        }
+        const cacheNames = await caches.keys();
+        await Promise.all(cacheNames.map(name => caches.delete(name)));
+        window.location.reload();
+      } catch (err) {
+        window.location.reload();
+      }
+    }
+  };
+
   const handleAiAction = async (action: string, text: string) => {
     setIsAiLoading(true);
     setAiResponse(null);
@@ -673,6 +692,13 @@ export default function App() {
                 <Users size={14} />
               </button>
             )}
+            <button 
+              onClick={forceUpdate}
+              className="p-1.5 hover:bg-slate-100 rounded-md text-slate-400 hover:text-orange-600 transition-all"
+              title="Forçar Atualização"
+            >
+              <RefreshCcw size={14} />
+            </button>
             <button 
               onClick={handleLogout}
               className="p-1.5 hover:bg-slate-100 rounded-md text-slate-400 hover:text-slate-600 transition-all"
