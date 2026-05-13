@@ -19,12 +19,13 @@ import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '@/src/lib/utils';
 import { Resource } from '@/src/types';
 import * as pdfjs from 'pdfjs-dist';
+// @ts-ignore - Vite specific import for worker URL
+import pdfjsWorker from 'pdfjs-dist/build/pdf.worker.mjs?url';
 import { db, handleFirestoreError, OperationType } from '@/src/lib/firebase';
 import { doc, updateDoc } from 'firebase/firestore';
 
 // Configuração do Worker do PDF.js
-const PDFJS_VERSION = '3.11.174';
-pdfjs.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDFJS_VERSION}/pdf.worker.min.js`;
+pdfjs.GlobalWorkerOptions.workerSrc = pdfjsWorker;
 
 import Reader from './Reader';
 

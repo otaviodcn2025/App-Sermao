@@ -1,4 +1,4 @@
-const CACHE_NAME = 'conecta-sermon-v1';
+const CACHE_NAME = 'conecta-sermon-v2';
 const ASSETS = [
   '/',
   '/index.html',

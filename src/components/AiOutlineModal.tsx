@@ -16,9 +16,11 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '@/src/lib/utils';
 import * as pdfjs from 'pdfjs-dist';
+// @ts-ignore - Vite specific import for worker URL
+import pdfjsWorker from 'pdfjs-dist/build/pdf.worker.mjs?url';
 
 // Configure PDF.js worker
-pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
+pdfjs.GlobalWorkerOptions.workerSrc = pdfjsWorker;
 
 interface AiOutlineModalProps {
   onClose: () => void;

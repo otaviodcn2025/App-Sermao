@@ -1,8 +1,9 @@
 import * as pdfjs from 'pdfjs-dist';
+// @ts-ignore - Vite specific import for worker URL
+import pdfjsWorker from 'pdfjs-dist/build/pdf.worker.mjs?url';
 
 // Ensure the worker version matches the library exactly
-const PDFJS_VERSION = '4.8.69';
-pdfjs.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDFJS_VERSION}/pdf.worker.min.mjs`;
+pdfjs.GlobalWorkerOptions.workerSrc = pdfjsWorker;
 
 export async function extractTextFromPdf(file: File): Promise<string> {
   try {
