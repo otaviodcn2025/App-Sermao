@@ -88,7 +88,6 @@ export async function generateSermonOutline(topic: string, baseText?: string, co
 
     return response.text || "Não foi possível gerar o esboço.";
   } catch (error: any) {
-    // ... error handling ...
     throw error;
   }
 }
@@ -218,24 +217,20 @@ export async function analyzeVerse(reference: string, textRef: string, libraryCo
     return response.text || "Não foi possível analisar o versículo.";
   } catch (error: any) {
     console.error("Gemini Error (analyzeVerse):", error);
-    if (error?.message?.includes("404") || error?.message?.includes("not found")) {
-      throw new Error(`Modelo '${DEFAULT_MODEL}' não encontrado.`);
-    }
-    if (error?.message?.includes("429") || error?.message?.includes("quota") || error?.message?.includes("demand")) {
-      throw new Error("O servidor de IA está com alta demanda ou quota esgotada.");
-    }
-    throw new Error(error?.message || "Erro desconhecido na análise do versículo.");
+    throw error;
   }
 }
 
-export async function generateSlideDescriptions(sermonContent: string) {
+export async function generateSlideDescriptions(sermonContent: string, specificPrompt?: string) {
   try {
     const ai = getAIClient();
     if (!ai) throw new Error("IA não disponível.");
 
-    const prompt = `Com base no sermão abaixo, crie um plano de 6-8 slides para uma apresentação PowerPoint. 
+    const prompt = `Atue como um designer de apresentações para igrejas. 
+    ${specificPrompt ? `FOCO ESPECÍFICO: ${specificPrompt}` : `Com base no sermão abaixo, crie um plano de 6-8 slides para uma apresentação PowerPoint.`}
     
-    IMPORTANTE: Formate sua resposta EXATAMENTE como no exemplo abaixo para permitir o processamento automático:
+    IMPORTANTE: Caso haja um foco específico, gere de 1 a 3 slides focados nele. Caso contrário, siga o plano geral.
+    Formate sua resposta EXATAMENTE como no exemplo abaixo para permitir o processamento automático:
 
     Slide 1
     Título: [Título Curto do Slide]
@@ -246,8 +241,8 @@ export async function generateSlideDescriptions(sermonContent: string) {
     Título: ...
     e assim por diante.
 
-    Sermão:
-    ${sermonContent}`;
+    ${sermonContent ? `CONTEXTO DO SERMÃO PARA REFERÊNCIA:
+    ${sermonContent.substring(0, 5000)}` : ''}`;
 
     const response = await ai.models.generateContent({
       model: DEFAULT_MODEL,
@@ -260,13 +255,7 @@ export async function generateSlideDescriptions(sermonContent: string) {
     return response.text || "Não foi possível gerar os slides.";
   } catch (error: any) {
     console.error("Gemini Error (generateSlideDescriptions):", error);
-    if (error?.message?.includes("404") || error?.message?.includes("not found")) {
-      throw new Error(`Modelo '${DEFAULT_MODEL}' não encontrado.`);
-    }
-    if (error?.message?.includes("429") || error?.message?.includes("quota") || error?.message?.includes("demand")) {
-      throw new Error("O servidor de IA está com alta demanda ou quota esgotada.");
-    }
-    throw new Error(error?.message || "Erro desconhecido na geração de slides.");
+    throw error;
   }
 }
 
@@ -399,5 +388,45 @@ export async function getLexiconDetails(word: string, context: string) {
   } catch (error) {
     console.error("Lexicon AI error:", error);
     return null;
+  }
+}
+
+export async function improveSlide(slide: { title: string, content: string }, type: 'simplify' | 'topics' | 'verse') {
+  try {
+    const ai = getAIClient();
+    if (!ai) throw new Error("IA não disponível.");
+
+    const instructions = {
+      simplify: "Simplifique o texto para que seja mais fácil de ler rapidamente em um slide. Use palavras poderosas e curtas.",
+      topics: "Transforme o texto em uma lista de tópicos (bullet points) concisos e impactantes.",
+      verse: "Encontre e adicione uma referência bíblica curta que reforce o tema deste slide."
+    };
+
+    const prompt = `Atue como um designer de slides teológicos. Melhore o seguinte slide.
+    
+    AÇÃO: ${instructions[type]}
+    
+    SLIDE ATUAL:
+    Título: ${slide.title}
+    Conteúdo: ${slide.content}
+    
+    Retorne um JSON com:
+    {
+      "title": "novo título ou mantido",
+      "content": "novo conteúdo melhorado"
+    }`;
+
+    const response = await ai.models.generateContent({
+      model: DEFAULT_MODEL,
+      contents: prompt,
+      config: {
+        responseMimeType: "application/json"
+      }
+    });
+
+    return JSON.parse(response.text || '{}');
+  } catch (error) {
+    console.error("Improve slide error:", error);
+    return slide;
   }
 }

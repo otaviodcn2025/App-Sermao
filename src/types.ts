@@ -28,6 +28,13 @@ export interface Series {
   createdAt: number;
 }
 
+export interface Slide {
+  id: string;
+  title: string;
+  content: string;
+  imageDescription?: string;
+}
+
 export interface BibleVerse {
   book_name: string;
   chapter: number;

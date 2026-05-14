@@ -28,7 +28,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import Editor from './components/Editor';
 import BibleSearch from './components/BibleSearch';
 import Auth from './components/Auth';
-import { Sermon, UserProfile, Resource, Series } from './types';
+import { Sermon, UserProfile, Resource, Series, Slide } from './types';
 import { cn, formatDate, parseSlides } from './lib/utils';
 import { 
   generateSermonOutline, 
@@ -40,7 +40,8 @@ import {
   generateCreativeTitles,
   translateAndConsult,
   analyzeThematicConnections,
-  semanticSearch
+  semanticSearch,
+  improveSlide
 } from './lib/gemini';
 import { generatePowerPoint } from './lib/pptx';
 import { auth, db, handleFirestoreError, OperationType } from './lib/firebase';
@@ -66,6 +67,7 @@ import PresentationMode from './components/PresentationMode';
 import AdminPanel from './components/AdminPanel';
 import AiOutlineModal from './components/AiOutlineModal';
 import Library from './components/Library';
+import SlideGenerator from './components/SlideGenerator';
 
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
@@ -88,6 +90,8 @@ export default function App() {
   const [resources, setResources] = useState<Resource[]>([]);
   const [searchResults, setSearchResults] = useState<string[] | null>(null);
   const [isSearching, setIsSearching] = useState(false);
+  const [isSlideGeneratorOpen, setIsSlideGeneratorOpen] = useState(false);
+  const [generatedSlides, setGeneratedSlides] = useState<Slide[]>([]);
 
   // Initialize responsive state
   useEffect(() => {
@@ -452,7 +456,14 @@ export default function App() {
       } else if (action === 'context') {
         result = await analyzeVerse(text, '', referenceContent);
       } else if (action === 'slides') {
-        result = await generateSlideDescriptions(currentSermon?.content || '');
+        result = await generateSlideDescriptions(currentSermon?.content || '', text);
+        const slides = parseSlides(result);
+        if (slides.length > 0) {
+          setGeneratedSlides(slides.map((s, idx) => ({ ...s, id: `slide-${idx}-${Date.now()}` })));
+          setIsSlideGeneratorOpen(true);
+          setIsAiLoading(false);
+          return; // Don't show in basic AI panel
+        }
       } else if (action === 'illustrations') {
         result = await generateIllustrations(text);
       } else if (action === 'simplify') {
@@ -507,6 +518,11 @@ export default function App() {
 
   const handleGenerateOutlineFromTheme = async () => {
     setIsAiModalOpen(true);
+  };
+
+  const handleImproveSlide = async (slide: Slide, type: 'simplify' | 'topics' | 'verse') => {
+    const result = await improveSlide(slide, type);
+    return { ...slide, ...result };
   };
 
   const handleResourceUpload = async (file: File) => {
@@ -692,6 +708,21 @@ export default function App() {
           <PresentationMode 
             sermon={currentSermon} 
             onClose={() => setIsPresenting(false)} 
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {isSlideGeneratorOpen && generatedSlides.length > 0 && (
+          <SlideGenerator 
+            initialSlides={generatedSlides}
+            sermonTitle={currentSermon?.title || 'Sermão'}
+            onClose={() => setIsSlideGeneratorOpen(false)}
+            onRegenerate={() => {
+              setIsSlideGeneratorOpen(false);
+              handleAiAction('slides', '');
+            }}
+            onImproveSlide={handleImproveSlide}
           />
         )}
       </AnimatePresence>
