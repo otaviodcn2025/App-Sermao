@@ -69,13 +69,14 @@ service cloud.firestore {
     match /sermons/{sermonId} {
       function isValidSermon(data) {
         return data.keys().hasAll(['id', 'userId', 'title', 'content', 'createdAt', 'updatedAt']) &&
-               data.keys().size() == 6 &&
                data.id == sermonId &&
                data.userId == request.auth.uid &&
                data.title is string && data.title.size() <= 255 &&
                data.content is string && data.content.size() <= 1048576 &&
                data.createdAt is number &&
-               data.updatedAt is number;
+               data.updatedAt is number &&
+               (!('seriesId' in data) || data.seriesId == null || (data.seriesId is string && isValidId(data.seriesId))) &&
+               (!('tags' in data) || data.tags is list);
       }
 
       allow list: if (isApproved() || isAdmin()) && resource.data.userId == request.auth.uid;
@@ -83,16 +84,14 @@ service cloud.firestore {
       allow create: if (isApproved() || isAdmin()) && 
                     isValidSermon(incoming()) && 
                     isValidId(sermonId) &&
-                    incoming().createdAt <= request.time.toMillis() &&
-                    incoming().updatedAt == incoming().createdAt;
+                    incoming().createdAt <= request.time.toMillis();
       allow update: if (isApproved() || isAdmin()) && 
                     resource.data.userId == request.auth.uid &&
                     isValidSermon(incoming()) &&
                     incoming().userId == existing().userId &&
                     incoming().id == existing().id &&
                     incoming().createdAt == existing().createdAt &&
-                    incoming().updatedAt >= existing().updatedAt &&
-                    incoming().diff(existing()).affectedKeys().hasAny(['title', 'content', 'updatedAt']);
+                    incoming().updatedAt >= existing().updatedAt;
       allow delete: if (isApproved() || isAdmin()) && resource.data.userId == request.auth.uid;
     }
 
@@ -109,13 +108,35 @@ service cloud.firestore {
                (!('lastReadPosition' in data) || data.lastReadPosition is number) &&
                (!('highlights' in data) || data.highlights is list) &&
                (!('extractedText' in data) || data.extractedText is string) &&
-               (!('summary' in data) || data.summary is string);
+               (!('summary' in data) || data.summary is string) &&
+               (!('tags' in data) || data.tags is list) &&
+               (!('seriesId' in data) || data.seriesId == null || (data.seriesId is string && isValidId(data.seriesId)));
       }
 
       allow list: if (isApproved() || isAdmin()) && resource.data.userId == request.auth.uid;
       allow get: if (isApproved() || isAdmin()) && resource.data.userId == request.auth.uid;
       allow create: if (isApproved() || isAdmin()) && isValidResource(incoming()) && isValidId(resourceId);
       allow update: if (isApproved() || isAdmin()) && resource.data.userId == request.auth.uid && isValidResource(incoming());
+      allow delete: if (isApproved() || isAdmin()) && resource.data.userId == request.auth.uid;
+    }
+
+    // Series Collection
+    match /series/{seriesId} {
+      function isValidSeries(data) {
+        return data.keys().hasAll(['id', 'userId', 'title', 'createdAt']) &&
+               data.id == seriesId &&
+               data.userId == request.auth.uid &&
+               data.title is string && data.title.size() <= 255 &&
+               data.createdAt is number &&
+               (!('description' in data) || data.description is string) &&
+               (!('color' in data) || data.color is string) &&
+               (!('tags' in data) || data.tags is list);
+      }
+
+      allow list: if (isApproved() || isAdmin()) && resource.data.userId == request.auth.uid;
+      allow get: if (isApproved() || isAdmin()) && resource.data.userId == request.auth.uid;
+      allow create: if (isApproved() || isAdmin()) && isValidSeries(incoming()) && isValidId(seriesId);
+      allow update: if (isApproved() || isAdmin()) && resource.data.userId == request.auth.uid && isValidSeries(incoming());
       allow delete: if (isApproved() || isAdmin()) && resource.data.userId == request.auth.uid;
     }
   }

@@ -12,8 +12,20 @@ export interface Sermon {
   userId: string;
   title: string;
   content: string; // JSON or HTML from TipTap
+  seriesId?: string;
+  tags?: string[];
   createdAt: number;
   updatedAt: number;
+}
+
+export interface Series {
+  id: string;
+  userId: string;
+  title: string;
+  description?: string;
+  color?: string;
+  tags?: string[];
+  createdAt: number;
 }
 
 export interface BibleVerse {
@@ -38,6 +50,8 @@ export interface Resource {
   title: string;
   type: 'pdf' | 'link' | 'epub';
   url?: string;
+  tags?: string[];
+  seriesId?: string;
   extractedText?: string;
   summary?: string;
   lastReadPosition?: number;

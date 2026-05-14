@@ -28,7 +28,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import Editor from './components/Editor';
 import BibleSearch from './components/BibleSearch';
 import Auth from './components/Auth';
-import { Sermon, UserProfile, Resource } from './types';
+import { Sermon, UserProfile, Resource, Series } from './types';
 import { cn, formatDate, parseSlides } from './lib/utils';
 import { 
   generateSermonOutline, 
@@ -38,7 +38,9 @@ import {
   generateIllustrations,
   simplifyContent,
   generateCreativeTitles,
-  translateAndConsult
+  translateAndConsult,
+  analyzeThematicConnections,
+  semanticSearch
 } from './lib/gemini';
 import { generatePowerPoint } from './lib/pptx';
 import { auth, db, handleFirestoreError, OperationType } from './lib/firebase';
@@ -72,6 +74,7 @@ export default function App() {
   const [isPresenting, setIsPresenting] = useState(false);
   const [isAdminPanelOpen, setIsAdminPanelOpen] = useState(false);
   const [sermons, setSermons] = useState<Sermon[]>([]);
+  const [series, setSeries] = useState<Series[]>([]);
   const [currentSermonId, setCurrentSermonId] = useState<string | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false); // Start false
   const [isBibleSearchOpen, setIsBibleSearchOpen] = useState(false); 
@@ -83,6 +86,8 @@ export default function App() {
   const [mobileTab, setMobileTab] = useState<'list' | 'editor' | 'bible' | 'library'>('editor');
   const [currentView, setCurrentView] = useState<'editor' | 'library'>('editor');
   const [resources, setResources] = useState<Resource[]>([]);
+  const [searchResults, setSearchResults] = useState<string[] | null>(null);
+  const [isSearching, setIsSearching] = useState(false);
 
   // Initialize responsive state
   useEffect(() => {
@@ -276,6 +281,30 @@ export default function App() {
     return () => unsubscribe();
   }, [user]);
 
+  // Sync Series from Firestore
+  useEffect(() => {
+    if (!user || !db) return;
+
+    const path = 'series';
+    const q = query(
+      collection(db, path), 
+      where('userId', '==', user.uid),
+      orderBy('createdAt', 'desc')
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const seriesList: Series[] = snapshot.docs.map(doc => ({
+        ...doc.data(),
+        id: doc.id
+      } as Series));
+      setSeries(seriesList);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, path);
+    });
+
+    return () => unsubscribe();
+  }, [user]);
+
   // Keep track of last selected sermon per user
   useEffect(() => {
     if (user && currentSermonId) {
@@ -289,7 +318,27 @@ export default function App() {
 
   const currentSermon = sermons.find(s => s.id === currentSermonId) || (sharedSermonData?.id === currentSermonId ? sharedSermonData : null);
 
-  const createNewSermon = async () => {
+  const handleSemanticSearch = async (queryStr: string) => {
+    if (!queryStr.trim()) {
+      setSearchResults(null);
+      return;
+    }
+    setIsSearching(true);
+    try {
+      const searchableItems = [
+        ...sermons.map(s => ({ id: s.id, title: s.title, type: 'sermon' })),
+        ...resources.map(r => ({ id: r.id, title: r.title, summary: r.summary, type: 'resource' }))
+      ];
+      const ids = await semanticSearch(queryStr, searchableItems);
+      setSearchResults(ids);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const createNewSermon = async (seriesId?: string) => {
     if (!user || !db) return;
     
     const collectionRef = collection(db, 'sermons');
@@ -302,14 +351,35 @@ export default function App() {
         userId: user.uid,
         title: 'Novo Sermão',
         content: '<h1>Título do Sermão</h1><p>Comece aqui seu rascunho ou use o botão <strong>Gerar Esboço com IA</strong> acima para estruturar sua mensagem.</p>',
+        seriesId: seriesId || null,
         createdAt: now,
         updatedAt: now,
       };
       
       await setDoc(newDocRef, newSermon);
       setCurrentSermonId(newDocRef.id);
+      setCurrentView('editor');
     } catch (err) {
       handleFirestoreError(err, OperationType.CREATE, 'sermons');
+    }
+  };
+
+  const createNewSeries = async (title: string, description?: string) => {
+    if (!user || !db) return;
+    const seriesRef = collection(db, 'series');
+    const newDoc = doc(seriesRef);
+    try {
+      const newSeries: Series = {
+        id: newDoc.id,
+        userId: user.uid,
+        title,
+        description,
+        createdAt: Date.now()
+      };
+      await setDoc(newDoc, newSeries);
+      return newDoc.id;
+    } catch (err) {
+      handleFirestoreError(err, OperationType.CREATE, 'series');
     }
   };
 
@@ -391,6 +461,11 @@ export default function App() {
         result = await generateCreativeTitles(currentSermon?.content || '');
       } else if (action === 'translate') {
         result = await translateAndConsult(text);
+      } else if (action === 'thematic') {
+        const otherSermonsContext = sermons
+          .filter(s => s.id !== currentSermonId)
+          .map(s => ({ id: s.id, title: s.title, content: s.content.substring(0, 500) }));
+        result = await analyzeThematicConnections(currentSermon?.content || '', otherSermonsContext) || 'Nenhuma conexão significativa encontrada.';
       }
       setAiResponse(result);
     } catch (err) {
@@ -452,6 +527,19 @@ export default function App() {
 
       setIsAiLoading(true);
       const summary = await summarizeResource(file.name, text);
+      
+      // Auto-tagging with AI
+      const tagsPrompt = `A partir deste resumo, sugira 3 a 5 etiquetas (tags) curtas de temas teológicos separadas por vírgula (ex: Fé, Graça, Salvação): "${summary.substring(0, 500)}"`;
+      const ai = (await import('./lib/gemini')).getAIClient();
+      let tags: string[] = [];
+      if (ai) {
+        try {
+          const res = await ai.models.generateContent({ model: 'gemini-1.5-flash', contents: tagsPrompt });
+          tags = (res.text || '').split(',').map(t => t.trim().replace(/^#/, ''));
+        } catch (e) {
+          console.error("Auto-tagging error:", e);
+        }
+      }
       setIsAiLoading(false);
 
       const resourceRef = collection(db, 'resources');
@@ -464,6 +552,7 @@ export default function App() {
         type: isPdf ? 'pdf' : 'epub',
         extractedText: text,
         summary: summary,
+        tags: tags,
         createdAt: Date.now()
       };
       
@@ -711,12 +800,42 @@ export default function App() {
 
         <div className="p-4">
           <button 
-            onClick={createNewSermon}
+            onClick={() => createNewSermon()}
             className="w-full flex items-center justify-center gap-2 bg-slate-900 text-white py-3 rounded-xl text-sm font-bold hover:bg-slate-800 transition-all shadow-sm group"
           >
             <Plus size={18} className="group-hover:rotate-90 transition-transform duration-300" />
             Novo Esboço
           </button>
+        </div>
+
+        <div className="px-4 mb-4">
+          <div className="relative group">
+            <Search className={cn("absolute left-3 top-1/2 -translate-y-1/2 transition-colors", isSearching ? "text-orange-500 animate-pulse" : "text-slate-400 group-focus-within:text-orange-500")} size={16} />
+            <input 
+              type="text"
+              placeholder="Busca Semântica (IA)..."
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  handleSemanticSearch((e.target as HTMLInputElement).value);
+                }
+              }}
+              className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-all placeholder:text-slate-400"
+            />
+            {searchResults && (
+              <button 
+                onClick={() => setSearchResults(null)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+              >
+                <X size={14} />
+              </button>
+            )}
+          </div>
+          {searchResults && (
+            <div className="mt-2 text-[10px] text-orange-600 font-bold bg-orange-50 px-2 py-1 rounded border border-orange-100 flex items-center justify-between">
+              Filtro IA Ativo
+              <span className="text-[8px] opacity-70">Encontrados: {searchResults.length}</span>
+            </div>
+          )}
         </div>
 
         <div className="px-4 py-2 flex flex-col gap-1">
@@ -751,8 +870,47 @@ export default function App() {
         </div>
 
         <div className="flex-1 overflow-y-auto px-2 space-y-1 pb-20 lg:pb-0">
+          <div className="px-4 py-2 flex items-center justify-between">
+            <h2 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-2">Séries de Mensagens</h2>
+            <button 
+              onClick={() => {
+                const title = prompt('Título da Nova Série:');
+                if (title) createNewSeries(title);
+              }}
+              className="p-1 hover:bg-slate-100 rounded text-slate-400 hover:text-orange-600"
+            >
+              <Plus size={14} />
+            </button>
+          </div>
+          
+          <div className="flex flex-col gap-1 px-2 mb-4">
+            {series.map(ser => (
+              <div 
+                key={ser.id}
+                className="group flex flex-col p-2 rounded-lg hover:bg-slate-50 cursor-pointer border border-transparent hover:border-slate-100"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-black text-slate-700 truncate">{ser.title}</span>
+                  <button 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      createNewSermon(ser.id);
+                    }}
+                    className="opacity-0 group-hover:opacity-100 p-1 bg-orange-50 text-orange-600 rounded"
+                    title="Adicionar Sermão a esta Série"
+                  >
+                    <Plus size={10} />
+                  </button>
+                </div>
+                <div className="text-[9px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">
+                  {sermons.filter(s => s.seriesId === ser.id).length} Sermões
+                </div>
+              </div>
+            ))}
+          </div>
+
           <div className="px-4 py-2">
-            <h2 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-2">Meus Esboços</h2>
+            <h2 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-2">Todos os Esboços</h2>
           </div>
           {sermons.length === 0 ? (
             <div className="text-center py-12 px-6">
@@ -760,7 +918,7 @@ export default function App() {
               <p className="text-sm text-slate-400">Nenhum esboço salvo ainda.</p>
             </div>
           ) : (
-            sermons.map(s => (
+            sermons.filter(s => !searchResults || searchResults.includes(s.id)).map(s => (
               <div
                 key={s.id}
                 onClick={() => {
@@ -777,6 +935,11 @@ export default function App() {
                 <div className="flex items-center gap-1.5 text-[9px] text-slate-400 mt-1.5 uppercase font-black tracking-widest">
                   <Clock size={10} />
                   {formatDate(s.updatedAt)}
+                  {s.seriesId && (
+                    <span className="ml-auto bg-orange-100 text-orange-600 px-1.5 py-0.5 rounded text-[8px]">
+                      {series.find(ser => ser.id === s.seriesId)?.title}
+                    </span>
+                  )}
                 </div>
                 <button 
                   onClick={(e) => deleteSermon(e, s.id)}
@@ -867,6 +1030,7 @@ export default function App() {
                 onUpload={handleResourceUpload}
                 onDelete={handleResourceDelete}
                 userApproved={userProfile?.approved || false}
+                searchResults={searchResults}
               />
             ) : currentSermon ? (
               <Editor 
@@ -892,7 +1056,7 @@ export default function App() {
                   <p className="text-sm">Selecione um esboço ou crie um novo para começar.</p>
                 </div>
                 <button 
-                  onClick={createNewSermon}
+                  onClick={() => createNewSermon()}
                   className="mt-4 px-8 py-3 bg-slate-900 text-white text-sm font-bold rounded-2xl hover:bg-slate-800 transition-all shadow-xl active:scale-95"
                 >
                   Criar Novo Esboço

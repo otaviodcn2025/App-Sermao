@@ -23,6 +23,11 @@
         "userId": { "type": "string" },
         "title": { "type": "string" },
         "content": { "type": "string" },
+        "seriesId": { "type": "string" },
+        "tags": { 
+          "type": "array",
+          "items": { "type": "string" }
+        },
         "createdAt": { "type": "number" },
         "updatedAt": { "type": "number" }
       },
@@ -38,6 +43,11 @@
         "title": { "type": "string" },
         "type": { "type": "string", "enum": ["pdf", "link", "epub"] },
         "url": { "type": "string" },
+        "tags": { 
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "seriesId": { "type": "string" },
         "extractedText": { "type": "string" },
         "summary": { "type": "string" },
         "lastReadPosition": { "type": "number" },
@@ -58,6 +68,24 @@
         "createdAt": { "type": "number" }
       },
       "required": ["id", "userId", "title", "type", "createdAt"]
+    },
+    "Series": {
+      "title": "Series",
+      "description": "Sermon series grouping",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "color": { "type": "string" },
+        "tags": { 
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "createdAt": { "type": "number" }
+      },
+      "required": ["id", "userId", "title", "createdAt"]
     }
   },
   "firestore": {
@@ -72,6 +100,10 @@
     "/resources/{resourceId}": {
       "schema": "Resource",
       "description": "Stored books and reference texts"
+    },
+    "/series/{seriesId}": {
+      "schema": "Series",
+      "description": "Message series"
     }
   }
 }

@@ -2,7 +2,7 @@ import { GoogleGenAI } from "@google/genai";
 
 let aiClient: GoogleGenAI | null = null;
 
-function getAIClient() {
+export function getAIClient() {
   if (!aiClient) {
     let apiKey = '';
     try {
@@ -303,5 +303,101 @@ export async function summarizeResource(title: string, content: string) {
   } catch (error: any) {
     console.error("Gemini Error (summarizeResource):", error);
     return "Ocorreu um erro ao tentar gerar o resumo automático.";
+  }
+}
+
+export async function semanticSearch(query: string, items: { id: string, title: string, summary?: string, type: string }[]) {
+  try {
+    const ai = getAIClient();
+    if (!ai) return items.filter(i => i.title.toLowerCase().includes(query.toLowerCase())).map(i => i.id);
+
+    const itemsList = items.map(i => `[ID: ${i.id}, Tipo: ${i.type}] Título: ${i.title}${i.summary ? ` - Resumo: ${i.summary.substring(0, 200)}` : ''}`).join('\n');
+    
+    const prompt = `Atue como um motor de busca semântico teológico. 
+    Dada a lista de sermões e livros abaixo, identifique os IDs daqueles que mais se relacionam com o conceito ou busca: "${query}".
+    Não procure apenas por palavras idênticas, mas por conceitos similares, temas teológicos relacionados e aplicações próximas.
+    
+    ITENS:
+    ${itemsList}
+    
+    Retorne APENAS uma lista de IDs separados por vírgula, em ordem de relevância. Se nenhum for relevante, retorne "vazio".`;
+
+    const response = await ai.models.generateContent({
+      model: DEFAULT_MODEL,
+      contents: prompt,
+    });
+
+    const result = response.text?.trim() || "";
+    if (result.toLowerCase() === 'vazio') return [];
+    return result.split(',').map(id => id.trim());
+  } catch (error) {
+    console.error("Semantic search error:", error);
+    return items.filter(i => i.title.toLowerCase().includes(query.toLowerCase())).map(i => i.id);
+  }
+}
+
+export async function analyzeThematicConnections(currentSermonContent: string, otherSermons: { id: string, title: string, content: string }[]) {
+  try {
+    const ai = getAIClient();
+    if (!ai) return null;
+
+    const list = otherSermons.map(s => `ID: ${s.id}, Título: ${s.title}`).join('\n');
+    
+    const prompt = `Analise o rascunho do sermão atual e compare com o acervo de sermões antigos do pastor. 
+    Identifique se há temas, ilustrações ou pontos exegéticos em sermões anteriores que poderiam enriquecer o sermão atual.
+    
+    SERMÃO ATUAL:
+    "${currentSermonContent.substring(0, 5000)}"
+    
+    ACERVO DE TÍTULOS ANTIGOS:
+    ${list}
+    
+    Forneça uma sugestão curta (2-3 sentenças) de como aproveitar o conteúdo antigo, citando o título do sermão anterior.
+    Se não houver conexão clara, retorne "Nenhuma conexão relevante encontrada no acervo."`;
+
+    const response = await ai.models.generateContent({
+      model: DEFAULT_MODEL,
+      contents: prompt,
+      config: {
+        systemInstruction: SYSTEM_INSTRUCTION,
+      }
+    });
+
+    return response.text;
+  } catch (error) {
+    console.error("Thematic analysis error:", error);
+    return null;
+  }
+}
+
+export async function getLexiconDetails(word: string, context: string) {
+  try {
+    const ai = getAIClient();
+    if (!ai) return null;
+
+    const prompt = `Forneça uma análise léxica e teológica da palavra ou termo "${word}" no contexto bíblico/homilético: "${context}".
+    
+    Retorne um JSON com a seguinte estrutura:
+    {
+      "original": "palavra em Grego ou Hebraico",
+      "transliteration": "transliteração",
+      "language": "Grego" | "Hebraico",
+      "meaning": "significado curto",
+      "explanation": "explicação detalhada da nuance teológica",
+      "application": "sugestão de aplicação para o sermão"
+    }`;
+
+    const response = await ai.models.generateContent({
+      model: DEFAULT_MODEL,
+      contents: prompt,
+      config: {
+        responseMimeType: "application/json"
+      }
+    });
+
+    return JSON.parse(response.text || '{}');
+  } catch (error) {
+    console.error("Lexicon AI error:", error);
+    return null;
   }
 }

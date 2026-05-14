@@ -13,7 +13,8 @@ import {
   Eye,
   ChevronLeft,
   Maximize2,
-  Bookmark
+  Bookmark,
+  Tag
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '@/src/lib/utils';
@@ -34,6 +35,7 @@ interface LibraryProps {
   onUpload: (file: File) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
   userApproved: boolean;
+  searchResults?: string[] | null;
 }
 
 // Componente de Capa de Livro Gerada Dinamicamente
@@ -98,7 +100,7 @@ function BookCover({ title, type }: { title: string, type: 'pdf' | 'epub' | 'lin
   );
 }
 
-export default function Library({ resources, onUpload, onDelete, userApproved }: LibraryProps) {
+export default function Library({ resources, onUpload, onDelete, userApproved, searchResults }: LibraryProps) {
   const [isUploading, setIsUploading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedResource, setSelectedResource] = useState<Resource | null>(null);
@@ -125,9 +127,11 @@ export default function Library({ resources, onUpload, onDelete, userApproved }:
     }
   };
 
-  const filteredResources = resources.filter(r => 
-    r.title.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredResources = resources.filter(r => {
+    const matchesSearch = r.title.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSemantic = !searchResults || searchResults.includes(r.id);
+    return matchesSearch && matchesSemantic;
+  });
   
   const handleUpdatePosition = async (resourceId: string, position: number) => {
     try {
@@ -351,6 +355,19 @@ export default function Library({ resources, onUpload, onDelete, userApproved }:
                     {new Date(resource.createdAt).toLocaleDateString('pt-BR')}
                   </span>
                 </div>
+
+                {resource.tags && resource.tags.length > 0 && (
+                  <div className="flex flex-wrap gap-1 mt-2">
+                    {resource.tags.slice(0, 3).map((tag, idx) => (
+                      <span key={idx} className="flex items-center gap-0.5 text-[8px] font-bold text-slate-500 bg-slate-50 px-1 py-0.5 rounded border border-slate-100 uppercase tracking-tighter">
+                        <Tag size={8} /> {tag}
+                      </span>
+                    ))}
+                    {resource.tags.length > 3 && (
+                      <span className="text-[8px] font-bold text-slate-400">+{resource.tags.length - 3}</span>
+                    )}
+                  </div>
+                )}
 
                 <div className="mt-3 pt-3 border-t border-slate-50 flex items-center justify-between">
                   <div className="flex items-center gap-1.5 opacity-50 group-hover:opacity-100 transition-opacity">

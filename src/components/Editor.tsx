@@ -16,7 +16,7 @@ import TaskItem from '@tiptap/extension-task-item';
 import { BibleReference } from '../lib/TiptapBible';
 import { Lexicon } from '../lib/TiptapLexicon';
 import { LexiconTerm } from '../constants/lexicon';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { 
   Sparkles, 
   Heading1, 
@@ -50,11 +50,17 @@ import {
   MessageSquare,
   Languages,
   Wand2,
-  Type
+  Type,
+  History,
+  Languages as GreekIcon,
+  Presentation,
+  X
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
 import { exportToWord, exportToPdf } from '../lib/export';
+import { parseBibleReference, fetchBibleVerses } from '../lib/bible';
+import { getLexiconDetails } from '../lib/gemini';
 
 interface EditorProps {
   content: string;
@@ -71,6 +77,8 @@ export default function Editor({ content, onChange, onAiAction, title, onTitleCh
   const [copied, setCopied] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
   const [lexiconTooltip, setLexiconTooltip] = useState<{ term: LexiconTerm, pos: { left: number, top: number } } | null>(null);
+  const [bibleSuggest, setBibleSuggest] = useState<{ query: string, range: { from: number, to: number } } | null>(null);
+  const [isLexiconLoading, setIsLexiconLoading] = useState(false);
 
   const editor = useEditor({
     extensions: [
@@ -104,7 +112,9 @@ export default function Editor({ content, onChange, onAiAction, title, onTitleCh
       Placeholder.configure({
         placeholder: 'Comece a escrever seu sermão aqui... Use a barra de ferramentas acima para formatar.',
       }),
-      BibleReference,
+      BibleReference.configure({
+        // Optional: disable automatic insertion if we want manual only
+      }),
       Lexicon.configure({
         onHover: (term, pos) => setLexiconTooltip({ term, pos }),
         onLeave: () => setLexiconTooltip(null),
@@ -114,6 +124,22 @@ export default function Editor({ content, onChange, onAiAction, title, onTitleCh
     editable: !readOnly,
     onUpdate: ({ editor }) => {
       onChange(editor.getHTML());
+      
+      // Auto-detect Bible references for floating button
+      const { selection } = editor.state;
+      const { $from } = selection;
+      const textBefore = $from.parent.textContent;
+      const regex = /((?:[1-3]?\s*)?[a-zA-ZáàâãéèêíïóòôõúùûçÁÀÂÃÉÈÊÍÏÓÒÔÕÚÙÛÇ]{2,})\s+(\d+)(?:[:.](\d+))?(?:-(\d+))?$/i;
+      const match = textBefore.match(regex);
+
+      if (match && match[0].length > 3) {
+        setBibleSuggest({
+          query: match[0],
+          range: { from: $from.pos - match[0].length, to: $from.pos }
+        });
+      } else {
+        setBibleSuggest(null);
+      }
     },
     editorProps: {
       attributes: {
@@ -121,6 +147,66 @@ export default function Editor({ content, onChange, onAiAction, title, onTitleCh
       },
     },
   });
+
+  const handleBibleInsert = async () => {
+    if (!editor || !bibleSuggest) return;
+    const parsed = parseBibleReference(bibleSuggest.query);
+    if (!parsed) return;
+
+    const verses = await fetchBibleVerses(parsed);
+    if (verses) {
+      editor.chain()
+        .focus()
+        .deleteRange(bibleSuggest.range)
+        .insertContent(`
+          <blockquote>
+            <p>"${verses.text}"</p>
+            <p>— ${verses.reference}</p>
+          </blockquote>
+          <p></p>
+        `)
+        .run();
+      setBibleSuggest(null);
+    }
+  };
+
+  const handleBibleSlide = () => {
+    if (!editor || !bibleSuggest) return;
+    onAiAction('slides', `Crie um slide especial para este versículo: ${bibleSuggest.query}`);
+    setBibleSuggest(null);
+  };
+
+  const handleDeepLexicon = async () => {
+    if (!editor) return;
+    const { from, to } = editor.state.selection;
+    const selectedText = editor.state.doc.textBetween(from, to).trim();
+    if (!selectedText) {
+      alert("Selecione uma palavra para análise léxica profunda.");
+      return;
+    }
+
+    setIsLexiconLoading(true);
+    try {
+      const details = await getLexiconDetails(selectedText, editor.getText().substring(Math.max(0, from - 200), Math.min(editor.getText().length, to + 200)));
+      if (details) {
+        setLexiconTooltip({
+          term: {
+            term: selectedText,
+            original: details.original,
+            language: details.language,
+            meaning: details.meaning,
+            explanation: details.explanation
+          },
+          pos: { left: window.innerWidth / 2 - 100, top: window.innerHeight / 2 - 100 }
+        });
+      }
+    } catch (e) {
+      console.error(e);
+      alert("Erro ao consultar dicionário teológico IA.");
+    } finally {
+      setIsLexiconLoading(false);
+    }
+  };
 
   // Keep editor in sync if content prop changes outside (e.g. AI generation or shared load)
   useEffect(() => {
@@ -300,9 +386,29 @@ export default function Editor({ content, onChange, onAiAction, title, onTitleCh
             >
               Aplicação
             </button>
+            <button
+              onClick={() => onAiAction('thematic', '')}
+              className="flex items-center gap-1.5 px-2 py-1 bg-purple-50 text-purple-700 text-[9px] font-black uppercase rounded border border-purple-100 hover:bg-purple-100 transition-colors shrink-0"
+              title="Análise Temática de Acervo"
+            >
+              <History size={12} />
+              Acervo
+            </button>
           </div>
 
           <div className="ml-auto flex items-center gap-1.5 px-1 border-l border-slate-200">
+            <button
+              onClick={handleDeepLexicon}
+              disabled={isLexiconLoading}
+              className={cn(
+                "flex items-center gap-2 px-3 py-1.5 rounded-md transition-all text-[10px] font-bold shadow-sm shrink-0",
+                isLexiconLoading ? "bg-slate-100 animate-pulse" : "bg-slate-900 text-white hover:bg-slate-800"
+              )}
+              title="Análise Exegética IA da Palavra Selecionada"
+            >
+              <GreekIcon size={14} />
+              <span className="hidden sm:inline">{isLexiconLoading ? "Analisando..." : "Hebraico/Grego"}</span>
+            </button>
             <button
               onClick={handleCopyText}
               className={cn(
@@ -347,6 +453,44 @@ export default function Editor({ content, onChange, onAiAction, title, onTitleCh
         </div>
         <EditorContent editor={editor} />
         
+        {/* Bible Smart Suggestion */}
+        <AnimatePresence>
+          {bibleSuggest && (
+            <motion.div
+              initial={{ opacity: 0, y: 20, scale: 0.9 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              className="absolute bottom-8 left-1/2 -translate-x-1/2 z-[100] bg-white border border-slate-200 shadow-2xl rounded-2xl p-2 flex items-center gap-2"
+            >
+              <div className="px-3 py-1.5 bg-orange-50 rounded-lg text-[10px] font-black text-orange-700 uppercase tracking-tight">
+                Referência Detectada: {bibleSuggest.query}
+              </div>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={handleBibleInsert}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-orange-600 text-white rounded-lg text-[10px] font-bold hover:bg-orange-700 transition-all"
+                >
+                  <Zap size={12} />
+                  Inserir Texto
+                </button>
+                <button
+                  onClick={handleBibleSlide}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 text-white rounded-lg text-[10px] font-bold hover:bg-slate-800 transition-all"
+                >
+                  <Presentation size={12} />
+                  Criar Slide
+                </button>
+                <button
+                  onClick={() => setBibleSuggest(null)}
+                  className="p-1.5 text-slate-400 hover:bg-slate-100 rounded-lg"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         {/* Lexicon Tooltip */}
         <AnimatePresence>
           {lexiconTooltip && (
