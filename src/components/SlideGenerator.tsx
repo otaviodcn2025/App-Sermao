@@ -42,17 +42,23 @@ export default function SlideGenerator({ initialSlides, sermonTitle, onClose, on
     setIsGeneratingAll(true);
     
     try {
-      // Inicia a geração para todos simultaneamente para maior velocidade no navegador
-      const updatedSlides = slides.map(slide => {
+      const newSlides = [...slides];
+      for (let i = 0; i < newSlides.length; i++) {
+        const slide = newSlides[i];
+        if (slide.imageUrl) continue; // Pula os que já tem imagem
+
         const promptText = slide.imageDescription || slide.title;
-        if (!promptText) return slide;
+        if (!promptText) continue;
+
+        // Melhora o prompt adicionando termos técnicos em inglês para melhor resultado na IA
+        const enhancedPrompt = encodeURIComponent(`${promptText}, christian church aesthetic, worship atmosphere, cinematic lighting, soft focus background, high quality 4k --ar 16:9`);
+        const imageUrl = `https://image.pollinations.ai/prompt/${enhancedPrompt}?width=1280&height=720&nologo=true&seed=${Math.floor(Math.random() * 1000000)}`;
         
-        const prompt = encodeURIComponent(promptText + " christian church sermon background soft texture high quality 4k");
-        const imageUrl = `https://image.pollinations.ai/prompt/${prompt}?width=1280&height=720&nologo=true&seed=${Math.floor(Math.random() * 100000)}`;
-        return { ...slide, imageUrl };
-      });
-      
-      setSlides(updatedSlides);
+        newSlides[i] = { ...slide, imageUrl };
+        setSlides([...newSlides]);
+        // Pequena pausa para não sobrecarregar a rede
+        await new Promise(r => setTimeout(r, 800));
+      }
     } finally {
       setIsGeneratingAll(false);
     }
@@ -66,10 +72,12 @@ export default function SlideGenerator({ initialSlides, sermonTitle, onClose, on
     setIsGeneratingImage(true);
     
     try {
-      const prompt = encodeURIComponent(promptText + " christian church sermon background soft texture high quality 4k");
-      const imageUrl = `https://image.pollinations.ai/prompt/${prompt}?width=1280&height=720&nologo=true&seed=${Math.floor(Math.random() * 100000)}`;
+      const enhancedPrompt = encodeURIComponent(`${promptText}, christian church aesthetic, worship atmosphere, cinematic lighting, soft focus background, high quality 4k`);
+      const imageUrl = `https://image.pollinations.ai/prompt/${enhancedPrompt}?width=1280&height=720&nologo=true&seed=${Math.floor(Math.random() * 1000000)}`;
       
       updateSlide(slideToUpdate.id, { imageUrl });
+      // Força um pequeno delay para a UI respirar
+      await new Promise(r => setTimeout(r, 500));
     } finally {
       setIsGeneratingImage(false);
     }
@@ -258,8 +266,8 @@ export default function SlideGenerator({ initialSlides, sermonTitle, onClose, on
                   {currentSlide.imageUrl && (
                     <motion.div 
                       initial={{ opacity: 0 }}
-                      animate={{ opacity: 0.6 }}
-                      className="absolute inset-0 z-0"
+                      animate={{ opacity: 0.85 }}
+                      className="absolute inset-0 z-0 scale-105"
                     >
                       <img 
                         src={currentSlide.imageUrl} 
@@ -268,7 +276,7 @@ export default function SlideGenerator({ initialSlides, sermonTitle, onClose, on
                         className="w-full h-full object-cover"
                         referrerPolicy="no-referrer"
                       />
-                      <div className="absolute inset-0 bg-black/20" />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-black/70" />
                     </motion.div>
                   )}
 
@@ -290,7 +298,7 @@ export default function SlideGenerator({ initialSlides, sermonTitle, onClose, on
 
                   <div className={cn(
                     "p-12 lg:p-20 flex-1 flex flex-col justify-center gap-8 relative z-10 transition-all duration-300",
-                    currentSlide.imageUrl && "bg-black/30 backdrop-blur-[2px]"
+                    currentSlide.imageUrl && "backdrop-blur-[1px]"
                   )}>
                     <input 
                       type="text"
@@ -358,9 +366,21 @@ export default function SlideGenerator({ initialSlides, sermonTitle, onClose, on
                     ) }
                   </div>
                   <div className="flex gap-4 items-start">
-                    {currentSlide.imageUrl && (
-                      <div className="w-16 h-16 rounded-lg overflow-hidden border border-slate-200 shrink-0">
-                        <img src={currentSlide.imageUrl} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                    {currentSlide.imageUrl ? (
+                      <div className="w-16 h-16 rounded-lg overflow-hidden border border-slate-200 shrink-0 bg-slate-100 relative group">
+                        <img 
+                          src={currentSlide.imageUrl} 
+                          className="w-full h-full object-cover transition-transform group-hover:scale-110" 
+                          referrerPolicy="no-referrer"
+                          onError={(e) => {
+                            // Se a imagem falhar, podemos tentar recarregar ou mostrar erro
+                            (e.target as HTMLImageElement).src = 'https://placehold.co/600x400/f1f5f9/64748b?text=Sem+Visual';
+                          }}
+                        />
+                      </div>
+                    ) : (
+                      <div className="w-16 h-16 rounded-lg bg-slate-50 border border-dashed border-slate-200 flex items-center justify-center shrink-0">
+                        <ImageIcon size={20} className="text-slate-300" />
                       </div>
                     )}
                     <p className="text-xs text-slate-600 leading-relaxed italic">
