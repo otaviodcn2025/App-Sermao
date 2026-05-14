@@ -3,6 +3,7 @@ import pptxgen from "pptxgenjs";
 interface SlideData {
   title: string;
   content: string;
+  imageUrl?: string;
   imageDescription?: string;
 }
 
@@ -17,6 +18,16 @@ export async function generatePowerPoint(sermonTitle: string, slides: SlideData[
       { rect: { x: 0, y: 0, w: "100%", h: 0.8, fill: { color: "EA580C" } } }, // Orange-600 banner
       { text: { text: sermonTitle, options: { x: 0.5, y: 0.2, w: 9, h: 0.4, color: "FFFFFF", fontSize: 14, bold: true, align: "left" } } },
       { text: { text: "Gerado por ConectaSermon", options: { x: 0.5, y: 5.3, w: 9, h: 0.3, color: "94A3B8", fontSize: 10, align: "right" } } },
+    ],
+  });
+
+  // Define a Dark Master Slide for slides with background images
+  pptx.defineSlideMaster({
+    title: "DARK_MASTER",
+    background: { color: "000000" },
+    objects: [
+      { text: { text: sermonTitle, options: { x: 0.5, y: 0.2, w: 9, h: 0.4, color: "FFFFFF", fontSize: 14, align: "left" } } },
+      { text: { text: "Gerado por ConectaSermon", options: { x: 0.5, y: 5.3, w: 9, h: 0.3, color: "FFFFFF", fontSize: 10, align: "right" } } },
     ],
   });
 
@@ -47,19 +58,42 @@ export async function generatePowerPoint(sermonTitle: string, slides: SlideData[
 
   // Content Slides
   slides.forEach((slide) => {
-    const pptxSlide = pptx.addSlide({ masterName: "MASTER_SLIDE" });
+    const hasImage = !!slide.imageUrl;
+    const pptxSlide = pptx.addSlide({ 
+      masterName: hasImage ? "DARK_MASTER" : "MASTER_SLIDE" 
+    });
+
+    if (hasImage) {
+      // Background Image
+      pptxSlide.addImage({
+        path: slide.imageUrl,
+        x: 0,
+        y: 0,
+        w: "100%",
+        h: "100%",
+        sizing: { type: "cover", w: 10, h: 5.625 } // standard 16:9 slide size in inches
+      });
+      // Dark Overlay to improve readability
+      pptxSlide.addShape(pptx.ShapeType.rect, {
+        x: 0,
+        y: 0,
+        w: "100%",
+        h: "100%",
+        fill: { color: "000000", transparency: 40 }
+      });
+    }
     
     // Slide Title
     pptxSlide.addText(slide.title, {
       x: 0.5,
-      y: 1.0,
+      y: hasImage ? 0.8 : 1.0,
       w: 9,
       h: 0.8,
       fontSize: 32,
       bold: true,
-      color: "EA580C",
+      color: hasImage ? "FFFFFF" : "EA580C",
       align: "center",
-      underline: { style: "sng" }
+      underline: hasImage ? { style: "none" } : { style: "sng" }
     });
 
     // Slide Content
@@ -69,7 +103,7 @@ export async function generatePowerPoint(sermonTitle: string, slides: SlideData[
       w: 8,
       h: 3.0,
       fontSize: 24,
-      color: "334155",
+      color: hasImage ? "F8FAFC" : "334155",
       align: "center",
       valign: "top"
     });
