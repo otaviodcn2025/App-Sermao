@@ -15,15 +15,9 @@ import {
   Check
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { cn } from '../lib/utils';
+import { Sermon, UserProfile, Resource, Series, Slide } from '../types';
+import { cn, formatDate, parseSlides } from '../lib/utils';
 import { generatePowerPoint } from '../lib/pptx';
-
-interface Slide {
-  id: string;
-  title: string;
-  content: string;
-  imageDescription?: string;
-}
 
 interface SlideGeneratorProps {
   initialSlides: Slide[];
@@ -38,9 +32,53 @@ export default function SlideGenerator({ initialSlides, sermonTitle, onClose, on
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
   const [isExporting, setIsExporting] = useState(false);
   const [isImproving, setIsImproving] = useState(false);
+  const [isGeneratingImage, setIsGeneratingImage] = useState(false);
+  const [isGeneratingAll, setIsGeneratingAll] = useState(false);
   const [theme, setTheme] = useState<'modern' | 'classic' | 'minimal'>('modern');
 
   const currentSlide = slides[currentSlideIndex];
+
+  const handleGenerateAllImages = async () => {
+    setIsGeneratingAll(true);
+    const newSlides = [...slides];
+    
+    try {
+      for (let i = 0; i < newSlides.length; i++) {
+        const slide = newSlides[i];
+        const promptText = slide.imageDescription || slide.title;
+        if (!promptText) continue;
+
+        const prompt = encodeURIComponent(promptText + " christian church sermon background slide cinematic high quality 4k");
+        const imageUrl = `https://image.pollinations.ai/prompt/${prompt}?width=1280&height=720&nologo=true&seed=${Math.floor(Math.random() * 100000)}`;
+        
+        newSlides[i] = { ...slide, imageUrl };
+        setSlides([...newSlides]); // Update UI incrementally
+        await new Promise(r => setTimeout(r, 500)); // Small delay between requests
+      }
+    } finally {
+      setIsGeneratingAll(false);
+    }
+  };
+
+  const handleGenerateImage = async () => {
+    const slideToUpdate = currentSlide;
+    const promptText = slideToUpdate.imageDescription || slideToUpdate.title;
+    if (!promptText) return;
+
+    setIsGeneratingImage(true);
+    
+    try {
+      // Usando motor de imagem mais estável
+      const prompt = encodeURIComponent(promptText + " christian church sermon background slide cinematic high quality 4k");
+      const imageUrl = `https://image.pollinations.ai/prompt/${prompt}?width=1280&height=720&nologo=true&seed=${Math.floor(Math.random() * 100000)}`;
+      
+      // Pequeno delay para efeito visual e garantir que a URL foi gerada
+      await new Promise(r => setTimeout(r, 1000));
+      updateSlide(slideToUpdate.id, { imageUrl });
+    } finally {
+      setIsGeneratingImage(false);
+    }
+  };
 
   const handleImprove = async (type: 'simplify' | 'topics' | 'verse') => {
     setIsImproving(true);
@@ -55,7 +93,7 @@ export default function SlideGenerator({ initialSlides, sermonTitle, onClose, on
   };
 
   const updateSlide = (id: string, updates: Partial<Slide>) => {
-    setSlides(slides.map(s => s.id === id ? { ...s, ...updates } : s));
+    setSlides(prev => prev.map(s => s.id === id ? { ...s, ...updates } : s));
   };
 
   const removeSlide = (id: string) => {
@@ -102,6 +140,14 @@ export default function SlideGenerator({ initialSlides, sermonTitle, onClose, on
           
           <div className="flex items-center gap-2">
             <button 
+              onClick={handleGenerateAllImages}
+              disabled={isGeneratingAll}
+              className="flex items-center gap-2 px-4 py-2 text-orange-600 font-bold text-xs hover:bg-orange-50 rounded-xl transition-all disabled:opacity-50"
+            >
+              <Sparkles size={16} className={cn(isGeneratingAll && "animate-spin")} />
+              {isGeneratingAll ? 'Gerando Tudo...' : 'Gerar Todas Imagens'}
+            </button>
+            <button 
               onClick={onRegenerate}
               className="flex items-center gap-2 px-4 py-2 text-slate-600 font-bold text-xs hover:bg-slate-50 rounded-xl transition-all"
             >
@@ -130,18 +176,24 @@ export default function SlideGenerator({ initialSlides, sermonTitle, onClose, on
           <div className="w-64 border-r border-slate-100 bg-slate-50/50 overflow-y-auto p-4 hidden md:flex flex-col gap-3">
             <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2 px-2">Estrutura</h3>
             {slides.map((slide, index) => (
-              <button
+              <div
                 key={slide.id}
                 onClick={() => setCurrentSlideIndex(index)}
                 className={cn(
-                  "group relative w-full aspect-video rounded-xl border-2 p-2 text-left transition-all overflow-hidden",
+                  "group relative w-full aspect-video rounded-xl border-2 p-2 text-left transition-all overflow-hidden cursor-pointer",
                   currentSlideIndex === index 
                     ? "bg-white border-orange-500 shadow-md scale-102" 
                     : "bg-white/50 border-slate-200 hover:border-slate-300"
                 )}
               >
                 <div className="text-[8px] font-bold text-slate-400 mb-1">Slide {index + 1}</div>
-                <div className="text-[10px] font-black text-slate-700 leading-tight line-clamp-2">{slide.title}</div>
+                <div className="text-[10px] font-black text-slate-700 leading-tight line-clamp-2 relative z-10">{slide.title}</div>
+                
+                {slide.imageUrl && (
+                  <div className="absolute inset-0 opacity-20 group-hover:opacity-30 transition-opacity">
+                    <img src={slide.imageUrl} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                  </div>
+                )}
                 
                 <button 
                   onClick={(e) => {
@@ -152,7 +204,7 @@ export default function SlideGenerator({ initialSlides, sermonTitle, onClose, on
                 >
                   <Trash2 size={12} />
                 </button>
-              </button>
+              </div>
             ))}
             <button className="w-full py-4 border-2 border-dashed border-slate-200 rounded-xl text-slate-400 hover:text-orange-500 hover:border-orange-200 transition-all flex flex-col items-center justify-center gap-1 group">
                <Plus size={20} className="group-hover:scale-110 transition-transform" />
@@ -202,13 +254,39 @@ export default function SlideGenerator({ initialSlides, sermonTitle, onClose, on
               <div className="relative group">
                 <div 
                   className={cn(
-                    "w-full aspect-video bg-white shadow-2xl rounded-2xl overflow-hidden border-8 border-white flex flex-col transition-all duration-500",
+                    "w-full aspect-video bg-white shadow-2xl rounded-2xl overflow-hidden border-8 border-white flex flex-col transition-all duration-500 relative",
                     theme === 'modern' && "bg-gradient-to-br from-white to-slate-50",
                     theme === 'classic' && "bg-slate-50",
                   )}
                 >
+                  {/* Background Image */}
+                  {currentSlide.imageUrl && (
+                    <motion.div 
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 0.35 }}
+                      className="absolute inset-0 z-0"
+                    >
+                      <img 
+                        src={currentSlide.imageUrl} 
+                        key={currentSlide.imageUrl}
+                        alt="Background" 
+                        className="w-full h-full object-cover"
+                        referrerPolicy="no-referrer"
+                      />
+                    </motion.div>
+                  )}
+
+                  {isGeneratingImage && (
+                    <div className="absolute inset-0 z-20 bg-slate-900/10 backdrop-blur-[2px] flex items-center justify-center">
+                      <div className="flex flex-col items-center gap-3">
+                         <RefreshCcw className="animate-spin text-orange-600" size={40} />
+                         <span className="text-orange-600 font-black text-xs uppercase tracking-widest">Gerando Visual...</span>
+                      </div>
+                    </div>
+                  )}
+
                   {/* Visual Background Hint */}
-                  {currentSlide.imageDescription && (
+                  {!currentSlide.imageUrl && currentSlide.imageDescription && (
                     <div className="absolute inset-0 opacity-[0.03] pointer-events-none flex items-center justify-center p-12">
                        <ImageIcon size={200} className="text-slate-900" />
                     </div>
@@ -264,13 +342,32 @@ export default function SlideGenerator({ initialSlides, sermonTitle, onClose, on
               {/* Bottom Details/Prompting */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex flex-col gap-4">
-                  <div className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                    <ImageIcon size={14} className="text-orange-500" />
-                    Sugestão de Visual IA
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                      <ImageIcon size={14} className="text-orange-500" />
+                      Sugestão de Visual IA
+                    </div>
+                    {(currentSlide.imageDescription || currentSlide.title) && (
+                      <button 
+                        onClick={handleGenerateImage}
+                        disabled={isGeneratingImage}
+                        className="flex items-center gap-1.5 px-3 py-1 bg-slate-900 text-white rounded-lg text-[9px] font-bold hover:bg-slate-800 transition-all disabled:opacity-50"
+                      >
+                        {isGeneratingImage ? <RefreshCcw size={10} className="animate-spin" /> : <Sparkles size={10} />}
+                        {currentSlide.imageUrl ? 'Trocar Imagem' : 'Gerar com IA'}
+                      </button>
+                    ) }
                   </div>
-                  <p className="text-xs text-slate-600 leading-relaxed italic">
-                    "{currentSlide.imageDescription || 'A IA não sugeriu uma imagem específica para este slide.'}"
-                  </p>
+                  <div className="flex gap-4 items-start">
+                    {currentSlide.imageUrl && (
+                      <div className="w-16 h-16 rounded-lg overflow-hidden border border-slate-200 shrink-0">
+                        <img src={currentSlide.imageUrl} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                      </div>
+                    )}
+                    <p className="text-xs text-slate-600 leading-relaxed italic">
+                      "{currentSlide.imageDescription || 'A IA não sugeriu uma imagem específica para este slide.'}"
+                    </p>
+                  </div>
                 </div>
 
                 <div className="bg-orange-50 p-6 rounded-3xl border border-orange-100 shadow-sm flex flex-col gap-4">

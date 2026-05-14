@@ -238,8 +238,11 @@ export async function generateSlideDescriptions(sermonContent: string, specificP
     Descrição Visual: [Sugestão de imagem para o fundo ou ilustração]
 
     Slide 2
-    Título: ...
-    e assim por diante.
+    Título: [Título]
+    Texto Principal: [Texto]
+    Descrição Visual: [Descrição]
+    
+    ...e assim por diante para todos os slides. Não omita campos em nenhum slide.
 
     ${sermonContent ? `CONTEXTO DO SERMÃO PARA REFERÊNCIA:
     ${sermonContent.substring(0, 5000)}` : ''}`;
