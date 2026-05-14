@@ -40,21 +40,19 @@ export default function SlideGenerator({ initialSlides, sermonTitle, onClose, on
 
   const handleGenerateAllImages = async () => {
     setIsGeneratingAll(true);
-    const newSlides = [...slides];
     
     try {
-      for (let i = 0; i < newSlides.length; i++) {
-        const slide = newSlides[i];
+      // Inicia a geração para todos simultaneamente para maior velocidade no navegador
+      const updatedSlides = slides.map(slide => {
         const promptText = slide.imageDescription || slide.title;
-        if (!promptText) continue;
-
-        const prompt = encodeURIComponent(promptText + " christian church sermon background slide cinematic high quality 4k");
-        const imageUrl = `https://image.pollinations.ai/prompt/${prompt}?width=1280&height=720&nologo=true&seed=${Math.floor(Math.random() * 100000)}`;
+        if (!promptText) return slide;
         
-        newSlides[i] = { ...slide, imageUrl };
-        setSlides([...newSlides]); // Update UI incrementally
-        await new Promise(r => setTimeout(r, 500)); // Small delay between requests
-      }
+        const prompt = encodeURIComponent(promptText + " christian church sermon background soft texture high quality 4k");
+        const imageUrl = `https://image.pollinations.ai/prompt/${prompt}?width=1280&height=720&nologo=true&seed=${Math.floor(Math.random() * 100000)}`;
+        return { ...slide, imageUrl };
+      });
+      
+      setSlides(updatedSlides);
     } finally {
       setIsGeneratingAll(false);
     }
@@ -68,12 +66,9 @@ export default function SlideGenerator({ initialSlides, sermonTitle, onClose, on
     setIsGeneratingImage(true);
     
     try {
-      // Usando motor de imagem mais estável
-      const prompt = encodeURIComponent(promptText + " christian church sermon background slide cinematic high quality 4k");
+      const prompt = encodeURIComponent(promptText + " christian church sermon background soft texture high quality 4k");
       const imageUrl = `https://image.pollinations.ai/prompt/${prompt}?width=1280&height=720&nologo=true&seed=${Math.floor(Math.random() * 100000)}`;
       
-      // Pequeno delay para efeito visual e garantir que a URL foi gerada
-      await new Promise(r => setTimeout(r, 1000));
       updateSlide(slideToUpdate.id, { imageUrl });
     } finally {
       setIsGeneratingImage(false);
@@ -263,7 +258,7 @@ export default function SlideGenerator({ initialSlides, sermonTitle, onClose, on
                   {currentSlide.imageUrl && (
                     <motion.div 
                       initial={{ opacity: 0 }}
-                      animate={{ opacity: 0.35 }}
+                      animate={{ opacity: 0.6 }}
                       className="absolute inset-0 z-0"
                     >
                       <img 
@@ -273,14 +268,15 @@ export default function SlideGenerator({ initialSlides, sermonTitle, onClose, on
                         className="w-full h-full object-cover"
                         referrerPolicy="no-referrer"
                       />
+                      <div className="absolute inset-0 bg-black/20" />
                     </motion.div>
                   )}
 
                   {isGeneratingImage && (
-                    <div className="absolute inset-0 z-20 bg-slate-900/10 backdrop-blur-[2px] flex items-center justify-center">
+                    <div className="absolute inset-0 z-20 bg-white/40 backdrop-blur-md flex items-center justify-center">
                       <div className="flex flex-col items-center gap-3">
                          <RefreshCcw className="animate-spin text-orange-600" size={40} />
-                         <span className="text-orange-600 font-black text-xs uppercase tracking-widest">Gerando Visual...</span>
+                         <span className="text-orange-600 font-black text-xs uppercase tracking-[0.2em] animate-pulse">Gerando Visual Premium...</span>
                       </div>
                     </div>
                   )}
@@ -292,14 +288,17 @@ export default function SlideGenerator({ initialSlides, sermonTitle, onClose, on
                     </div>
                   )}
 
-                  <div className="p-12 lg:p-20 flex-1 flex flex-col justify-center gap-8 relative z-10">
+                  <div className={cn(
+                    "p-12 lg:p-20 flex-1 flex flex-col justify-center gap-8 relative z-10 transition-all duration-300",
+                    currentSlide.imageUrl && "bg-black/30 backdrop-blur-[2px]"
+                  )}>
                     <input 
                       type="text"
                       value={currentSlide.title}
                       onChange={(e) => updateSlide(currentSlide.id, { title: e.target.value })}
                       className={cn(
                         "bg-transparent border-none focus:outline-none focus:ring-0 w-full text-3xl lg:text-5xl font-black transition-all",
-                        theme === 'modern' ? "text-orange-600 text-center" : "text-slate-900",
+                        currentSlide.imageUrl ? "text-white drop-shadow-lg" : (theme === 'modern' ? "text-orange-600 text-center" : "text-slate-900"),
                         theme === 'minimal' && "text-center tracking-tighter"
                       )}
                       placeholder="Título do Slide"
@@ -310,7 +309,7 @@ export default function SlideGenerator({ initialSlides, sermonTitle, onClose, on
                       onChange={(e) => updateSlide(currentSlide.id, { content: e.target.value })}
                       className={cn(
                         "bg-transparent border-none focus:outline-none focus:ring-0 w-full flex-1 resize-none text-xl lg:text-2xl leading-relaxed transition-all",
-                        theme === 'modern' ? "text-slate-600 text-center" : "text-slate-700",
+                        currentSlide.imageUrl ? "text-white/90 drop-shadow-md" : (theme === 'modern' ? "text-slate-600 text-center" : "text-slate-700"),
                         theme === 'minimal' && "text-center text-slate-500"
                       )}
                       placeholder="Conteúdo do Slide (use tópicos)"
