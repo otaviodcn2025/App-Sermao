@@ -69,32 +69,32 @@ export default function Reader({ resource, onClose, onUpdatePosition, onAddHighl
     const text = resource.extractedText || '';
     if (!text) return '';
     
-    // We want to join lines that were broken mid-sentence but keep headers on their own line
-    // Improved heuristic: if a line is short and uppercase/title case, it's likely a header
+    // Improved joining that respects headers and Bible structure
     const lines = text.split('\n');
     let processed = '';
     
+    // Pattern for book names and chapters to prevent joining them into previous lines
+    const sectionBreakPattern = /^(?:Cap[íi]tulo|Chapter|T[óo]pico|Se[çc][ãa]o|Parte|Lição|Estudo|Mensagem|Livro|Gên|Êxo|Lev|Núm|Deu|Jos|Juí|Rut|Sam|Rei|Crô|Esd|Nee|Est|Jó|Sal|Pro|Ecl|Can|Isa|Jer|Lam|Eze|Dan|Osé|Joe|Amó|Oba|Jon|Miq|Nau|Hab|Sof|Age|Zac|Mal|Mat|Mar|Luc|Joã|Ato|Rom|Cor|Gál|Efé|Fil|Col|Tes|Tim|Tit|Fil|Heb|Tia|Ped|Jud|Apo)/i;
+
     lines.forEach((line, i) => {
       const trimmed = line.trim();
-      const nextTrimmed = lines[i+1]?.trim() || '';
-      
       if (!trimmed) {
         processed += '\n\n';
         return;
       }
 
-      // If it looks like a header (short, special regex), keep it isolated
-      const isHeader = trimmed.length < 60 && (
-        /^(?:Cap[íi]tulo|Chapter|T[óo]pico|Se[çc][ãa]o|Parte|Lição|Estudo|Mensagem|Livro)/i.test(trimmed) ||
+      // Detect if it's a header/chapter/title case to keep it on its own line
+      const isLikelyHeader = trimmed.length < 80 && (
+        sectionBreakPattern.test(trimmed) ||
         trimmed === trimmed.toUpperCase() ||
         /^\d+$/.test(trimmed)
       );
 
-      if (isHeader) {
+      if (isLikelyHeader) {
         processed += '\n' + trimmed + '\n';
       } else {
-        // Join with space if next line exists and current doesn't end with sentence terminator
-        const endsWithTerminator = /[.!?:;]$/.test(trimmed);
+        const lastChar = trimmed.slice(-1);
+        const endsWithTerminator = /[.!?:;]/.test(lastChar);
         processed += trimmed + (endsWithTerminator ? '\n' : ' ');
       }
     });
@@ -102,17 +102,15 @@ export default function Reader({ resource, onClose, onUpdatePosition, onAddHighl
     return processed.replace(/\n{3,}/g, '\n\n').trim();
   }, [resource.extractedText]);
 
-  // Parse sections from text
+  // Parse sections from PROCESSED text for exact alignment
   const sections = React.useMemo(() => {
-    const rawText = resource.extractedText || '';
-    const lines = rawText.split('\n');
+    const lines = processedText.split('\n');
     const foundSections: { id: string; title: string; charOffset: number }[] = [
       { id: 'start', title: 'Início / Capa', charOffset: 0 }
     ];
 
     let currentCharOffset = 0;
     
-    // Improved Detection Patterns
     const bibleBooks = [
       'Gênesis', 'Êxodo', 'Levítico', 'Números', 'Deuteronômio', 'Josué', 'Juízes', 'Rute', '1 Samuel', '2 Samuel',
       '1 Reis', '2 Reis', '1 Crônicas', '2 Crônicas', 'Esdras', 'Neemias', 'Ester', 'Jó', 'Salmos', 'Provérbios',
@@ -123,24 +121,22 @@ export default function Reader({ resource, onClose, onUpdatePosition, onAddHighl
       'Hebreus', 'Tiago', '1 Pedro', '2 Pedro', '1 João', '2 João', '3 João', 'Judas', 'Apocalipse'
     ];
 
-    const bibleRefRegex = new RegExp(`^(${bibleBooks.join('|')})(\\s+\\d+|\\s*$)`, 'i');
-    const chapterRegex = /^(?:Cap[íi]tulo|Chapter|T[óo]pico|Se[çc][ãa]o|Parte|Lição|Estudo|Mensagem)\s+([0-9]+|[IVXLCDM]+)($|[:\s-].*)/i;
-    const keywordRegex = /^(?:INTRODUÇ[ÃA]O|CONCLUS[ÃA]O|RESUMO|NOTAS|REFERÊNCIAS|POSFÁCIO|PREFÁCIO|BIBLIOGRAFIA|APÊNDICE|CRÉDITOS|DEDICATÓRIA|PREF[ÁA]CIO|INTRODUCED|SUMMARY|NOTES|CONCLUD|CHAPTER)$/i;
-    const numberedRegex = /^\d+$/; // Useful for Bible chapters that are just a number on a line
+    // More flexible regex that also picks up "Sl 23", "Gên 1", etc.
+    const bibleRefRegex = new RegExp(`^\\s*(?:LIVRO\\s+DE\\s+)?(${bibleBooks.join('|')}|G[êe]n|Êxo|Lev|N[úu]m|Deu|Jos|Ju[íi]|Rut|Sam|Rei|Cr[ôo]|Esd|Nee|Est|J[óo]|Sal|Prov|Ecl|C[âa]nt|Isa|Jer|Lam|Eze|Dan|Os[éE]|Joe|Am[óO]|Oba|Jon|Miq|Nau|Hab|Sof|Age|Zac|Mal|Mat|Mar|Luc|Jo[ãa]|Atos|Rom|Cor|G[áa]l|Ef[éE]|Fil|Col|Tes|Tim|Tit|Flm|Heb|Tia|Ped|Jud|Apo)\\s*(\\d+)?`, 'i');
+    const chapterRegex = /^(?:Cap[íi]tulo|Chapter|T[óo]pico|Se[çc][ãa]o|Parte|Lição|Estudo|Mensagem|Estudo)\\s+([0-9]+|[IVXLCDM]+)/i;
+    const keywordRegex = /^(?:INTRODUÇ[ÃA]O|CONCLUS[ÃA]O|RESUMO|NOTAS|REFERÊNCIAS|POSFÁCIO|PREFÁCIO|BIBLIOGRAFIA|APÊNDICE|CRÉDITOS|DEDICATÓRIA|PREF[ÁA]CIO|BÍBLIA|LIVRO|INDICE|SUMÁRIO)$/i;
 
     lines.forEach((line, index) => {
       const trimmed = line.trim();
-      if (trimmed.length > 0 && trimmed.length < 120) {
+      if (trimmed.length > 0 && trimmed.length < 100) {
         const isBibleRef = bibleRefRegex.test(trimmed);
         const isChapterMarker = chapterRegex.test(trimmed);
-        const isNumbered = numberedRegex.test(trimmed);
         const isKeyword = keywordRegex.test(trimmed);
-        const isUppercase = trimmed.length > 4 && trimmed.length < 60 && trimmed === trimmed.toUpperCase() && /[A-Z]/.test(trimmed);
+        const isUppercase = trimmed.length > 5 && trimmed.length < 60 && trimmed === trimmed.toUpperCase() && /[A-Z]/.test(trimmed);
+        const isNumbered = /^\d+$/.test(trimmed);
 
-        if (isBibleRef || isChapterMarker || isKeyword || (isNumbered && trimmed.length < 4) || isUppercase) {
-          // If it's a number, make it clearer in the menu
+        if (isBibleRef || isChapterMarker || isKeyword || isUppercase || isNumbered) {
           const title = isNumbered ? `Capítulo ${trimmed}` : trimmed;
-          
           foundSections.push({
             id: `section-${index}`,
             title: title,
@@ -153,9 +149,9 @@ export default function Reader({ resource, onClose, onUpdatePosition, onAddHighl
 
     // Filtering to remove noise and very close entries
     return foundSections.filter((v, i, a) => 
-      a.findIndex(t => t.title.toLowerCase() === v.title.toLowerCase() && Math.abs(t.charOffset - v.charOffset) < 300) === i
+      a.findIndex(t => t.title.toLowerCase() === v.title.toLowerCase() && Math.abs(t.charOffset - v.charOffset) < 500) === i
     );
-  }, [resource.extractedText]);
+  }, [processedText]);
 
   const filteredSections = sections.filter(s => 
     s.title.toLowerCase().includes(searchQuery.toLowerCase())
@@ -457,7 +453,7 @@ export default function Reader({ resource, onClose, onUpdatePosition, onAddHighl
                   </div>
                </div>
                
-               <div className="flex-1 overflow-y-auto p-4 space-y-1">
+                  <div className="flex-1 overflow-y-auto p-4 space-y-1">
                   {filteredSections.length > 0 ? filteredSections.map((section) => (
                     <button
                       key={section.id}
@@ -471,9 +467,6 @@ export default function Reader({ resource, onClose, onUpdatePosition, onAddHighl
                          <span className="text-[11px] font-black uppercase tracking-widest block group-hover:text-orange-600 transition-colors truncate">
                            {section.title}
                          </span>
-                         <span className="text-[10px] opacity-40 font-bold block mt-0.5">
-                           Posição: {Math.round((section.charOffset / (processedText.length || 1)) * 100)}%
-                         </span>
                        </div>
                     </button>
                   )) : (
@@ -484,6 +477,54 @@ export default function Reader({ resource, onClose, onUpdatePosition, onAddHighl
                       <p className="text-[10px] uppercase font-black tracking-widest opacity-40">Nenhum resultado encontrado</p>
                     </div>
                   )}
+               </div>
+               
+               {/* Kindle-Style Font Settings */}
+               <div className="p-6 border-t border-black/5 space-y-6">
+                  <div className="space-y-3">
+                    <h3 className="text-[10px] font-black uppercase tracking-widest opacity-40">Aparência</h3>
+                    <div className="grid grid-cols-2 gap-2">
+                       <button 
+                         onClick={() => setFontFace('serif')}
+                         className={cn(
+                           "py-2 rounded-xl text-xs font-serif border transition-all",
+                           fontFace === 'serif' ? "bg-orange-500 text-white border-orange-500 shadow-lg shadow-orange-500/20" : "bg-black/5 border-transparent hover:bg-black/10"
+                         )}
+                       >
+                         Serifa
+                       </button>
+                       <button 
+                         onClick={() => setFontFace('sans')}
+                         className={cn(
+                           "py-2 rounded-xl text-xs font-sans border transition-all",
+                           fontFace === 'sans' ? "bg-orange-500 text-white border-orange-500 shadow-lg shadow-orange-500/20" : "bg-black/5 border-transparent hover:bg-black/10"
+                         )}
+                       >
+                         Sans
+                       </button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-[10px] font-black uppercase tracking-widest opacity-40">Tamanho da Fonte</h3>
+                      <span className="text-[10px] font-bold">{fontSize}px</span>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <button 
+                        onClick={() => setFontSize(Math.max(12, fontSize - 2))}
+                        className="flex-1 py-2 bg-black/5 rounded-xl text-lg hover:bg-black/10 active:scale-95 transition-all"
+                      >
+                        A-
+                      </button>
+                      <button 
+                        onClick={() => setFontSize(Math.min(32, fontSize + 2))}
+                        className="flex-1 py-2 bg-black/5 rounded-xl text-lg hover:bg-black/10 active:scale-95 transition-all"
+                      >
+                        A+
+                      </button>
+                    </div>
+                  </div>
                </div>
                
                <div className="p-8 border-t border-black/5 bg-black/[0.02] space-y-4">
