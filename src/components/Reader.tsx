@@ -13,7 +13,9 @@ import {
   ChevronLeft,
   ChevronRight,
   Info,
-  Bookmark
+  Bookmark,
+  Menu,
+  List
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '@/src/lib/utils';
@@ -47,11 +49,97 @@ export default function Reader({ resource, onClose, onUpdatePosition, onAddHighl
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showControls, setShowControls] = useState(true);
   const [progress, setProgress] = useState(0);
+  const [showSidebar, setShowSidebar] = useState(false);
   const [selection, setSelection] = useState<{ start: number; end: number; text: string; x: number; y: number } | null>(null);
   
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const lastSavedPosition = useRef<number>(resource.lastReadPosition || 0);
+
+  // Parse sections from text
+  const sections = React.useMemo(() => {
+    const rawText = resource.extractedText || '';
+    const lines = rawText.split('\n');
+    const foundSections: { id: string; title: string; lineIndex: number }[] = [
+      { id: 'start', title: 'Início / Introdução', lineIndex: 0 }
+    ];
+
+    // Regex for various heading styles
+    const chapterRegex = /^(?:Cap[íi]tulo|Chapter|T[óo]pico|Se[çc][ãa]o|Parte|Lição)\s+([0-9]+|[IVXLCDM]+)($|[:\s-].*)/i;
+    const numberedHeadingRegex = /^(\d+|[A-Z]|[IVXLCDM]+)[\.\)]\s+(.{3,100})$/i;
+    const keywordRegex = /^(?:INTRODUÇ[ÃA]O|CONCLUS[ÃA]O|RESUMO|NOTAS|REFERÊNCIAS|POSFÁCIO|PREFÁCIO|BIBLIOGRAFIA|APÊNDICE|CRÉDITOS|DEDICATÓRIA)$/i;
+
+    lines.forEach((line, index) => {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.length < 3) return;
+
+      const mdMatch = trimmed.match(/^#+\s+(.+)$/);
+      const chapterMatch = trimmed.match(chapterRegex);
+      const numberedMatch = trimmed.match(numberedHeadingRegex);
+      const isKeyword = keywordRegex.test(trimmed);
+      
+      // Avoid capturing the same line multiple times
+      if (mdMatch) {
+        foundSections.push({ id: `section-${index}`, title: mdMatch[1], lineIndex: index });
+        return;
+      }
+      
+      if (chapterMatch || isKeyword) {
+        foundSections.push({ id: `section-${index}`, title: trimmed, lineIndex: index });
+        return;
+      }
+
+      if (numberedMatch) {
+         // Numbered matches are often headings if they are short enough or ALL CAPS
+         const isCaps = trimmed === trimmed.toUpperCase();
+         if (trimmed.length < 60 || isCaps) {
+           foundSections.push({ id: `section-${index}`, title: trimmed, lineIndex: index });
+           return;
+         }
+      }
+
+      // Heuristic for Title-like lines: 
+      // Short, Uppercase, and surrounded by empty lines (or start of doc)
+      const isShort = trimmed.length < 70;
+      const isUppercase = trimmed === trimmed.toUpperCase() && /[A-Z]/.test(trimmed);
+      const isIsolated = (index === 0 || lines[index - 1].trim() === '') && 
+                         (index === lines.length - 1 || lines[index + 1].trim() === '');
+      const isPageNumber = /^(?:P[áa]gina|Page|Pag\.)\s*\d+$/i.test(trimmed) || /^\d+$/i.test(trimmed);
+
+      if (isUppercase && isShort && isIsolated && !isPageNumber) {
+        foundSections.push({ id: `section-${index}`, title: trimmed, lineIndex: index });
+      }
+    });
+
+    // Remove duplicates (sometimes headers appear multiple times near each other)
+    return foundSections.filter((v, i, a) => a.findIndex(t => t.title === v.title && Math.abs(t.lineIndex - v.lineIndex) < 5) === i);
+  }, [resource.extractedText]);
+
+  const scrollToPosition = (position: number) => {
+    if (scrollContainerRef.current) {
+      const container = scrollContainerRef.current;
+      container.scrollTo({
+        top: position * (container.scrollHeight - container.clientHeight),
+        behavior: 'smooth'
+      });
+      setShowSidebar(false);
+    }
+  };
+
+  const scrollToSection = (lineIndex: number) => {
+    if (scrollContainerRef.current && contentRef.current) {
+      // Approximate position based on line index relative to total lines
+      const totalLines = (resource.extractedText || '').split('\n').length;
+      const ratio = lineIndex / totalLines;
+      const container = scrollContainerRef.current;
+      
+      container.scrollTo({
+        top: ratio * container.scrollHeight,
+        behavior: 'smooth'
+      });
+      setShowSidebar(false);
+    }
+  };
 
   // Handle Text Selection
   const handleSelection = () => {
@@ -291,6 +379,77 @@ export default function Reader({ resource, onClose, onUpdatePosition, onAddHighl
       onMouseMove={() => setShowControls(true)}
       onClick={() => setShowControls(true)}
     >
+      {/* Sidebar Navigation */}
+      <AnimatePresence>
+        {showSidebar && (
+          <>
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowSidebar(false)}
+              className="fixed inset-0 bg-black/40 z-[150] backdrop-blur-sm"
+            />
+            <motion.div 
+              initial={{ x: -400 }}
+              animate={{ x: 0 }}
+              exit={{ x: -400 }}
+              className={cn(
+                "fixed top-0 left-0 bottom-0 w-[85vw] max-w-sm z-[160] shadow-2xl flex flex-col transition-colors duration-500",
+                currentTheme.ui
+              )}
+              onClick={(e) => e.stopPropagation()}
+            >
+               <div className="p-8 pb-6 border-b border-black/5">
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="font-black text-[10px] uppercase tracking-[0.2em] text-orange-600">Navegação</h3>
+                    <button onClick={() => setShowSidebar(false)} className="p-2 hover:bg-black/5 rounded-full transition-colors">
+                      <X size={18} />
+                    </button>
+                  </div>
+                  <h2 className="text-sm font-black tracking-tight leading-tight line-clamp-2">{resource.title}</h2>
+               </div>
+               
+               <div className="flex-1 overflow-y-auto p-4 space-y-1">
+                  {sections.map((section) => (
+                    <button
+                      key={section.id}
+                      onClick={() => scrollToSection(section.lineIndex)}
+                      className="w-full text-left p-4 rounded-2xl hover:bg-black/5 transition-all group flex items-center gap-4 active:bg-black/10"
+                    >
+                       <div className="p-2 rounded-lg bg-black/5 group-hover:bg-orange-500 transition-colors">
+                         <List size={14} className="group-hover:text-white transition-colors" />
+                       </div>
+                       <div className="flex-1 min-w-0">
+                         <span className="text-[11px] font-black uppercase tracking-widest block group-hover:text-orange-600 transition-colors truncate">
+                           {section.title}
+                         </span>
+                         <span className="text-[10px] opacity-40 font-bold block mt-0.5">
+                           Posição: {Math.round((section.lineIndex / ((resource.extractedText || '').split('\n').length || 1)) * 100)}%
+                         </span>
+                       </div>
+                    </button>
+                  ))}
+               </div>
+               
+               <div className="p-8 border-t border-black/5 bg-black/[0.02] space-y-4">
+                  <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-widest opacity-40">
+                    <span>Progresso total</span>
+                    <span>{Math.round(progress * 100)}%</span>
+                  </div>
+                  <div className="h-1.5 w-full bg-black/5 rounded-full overflow-hidden">
+                    <motion.div 
+                      initial={false}
+                      animate={{ width: `${progress * 100}%` }}
+                      className={cn("h-full transition-colors duration-500", currentTheme.progress)}
+                    />
+                  </div>
+               </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
       {/* Progress Bar */}
       <div className="absolute top-0 left-0 right-0 h-1 z-[110] bg-black/5">
         <motion.div 
@@ -314,6 +473,13 @@ export default function Reader({ resource, onClose, onUpdatePosition, onAddHighl
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center gap-2 md:gap-4">
+              <button 
+                onClick={() => setShowSidebar(true)}
+                className="p-3 hover:bg-black/5 rounded-full transition-colors active:scale-95"
+                title="Sumário"
+              >
+                <Menu size={24} />
+              </button>
               <button 
                 onClick={onClose}
                 className="p-3 hover:bg-black/5 rounded-full transition-colors active:scale-95"
