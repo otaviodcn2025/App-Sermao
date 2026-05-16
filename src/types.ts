@@ -62,6 +62,7 @@ export interface Resource {
   seriesId?: string;
   extractedText?: string;
   summary?: string;
+  toc?: { title: string; charOffset: number }[];
   lastReadPosition?: number;
   highlights?: {
     id: string;

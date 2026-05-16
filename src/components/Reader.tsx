@@ -104,6 +104,19 @@ export default function Reader({ resource, onClose, onUpdatePosition, onAddHighl
 
   // Parse sections from PROCESSED text for exact alignment
   const sections = React.useMemo(() => {
+    // If we have a saved TOC, we use it as the primary source
+    if (resource.toc && resource.toc.length > 0) {
+      return resource.toc.map((t, i) => {
+        // Find the title in the processed text for correct scrolling
+        const offsetInProcessed = processedText.indexOf(t.title);
+        return {
+          id: `toc-${i}`,
+          title: t.title,
+          charOffset: offsetInProcessed !== -1 ? offsetInProcessed : 0
+        };
+      }).filter(t => t.charOffset !== -1 || t.title.toLowerCase().includes('início'));
+    }
+
     const lines = processedText.split('\n');
     const foundSections: { id: string; title: string; charOffset: number }[] = [
       { id: 'start', title: 'Início / Capa', charOffset: 0 }
@@ -337,8 +350,8 @@ export default function Reader({ resource, onClose, onUpdatePosition, onAddHighl
     }
     */
     
-    // Save position if it changed significantly (more than 2%)
-    if (Math.abs(currentProgress - lastSavedPosition.current) > 0.02) {
+    // Save position if it changed significantly (more than 5%)
+    if (Math.abs(currentProgress - lastSavedPosition.current) > 0.05) {
       onUpdatePosition?.(currentProgress);
       lastSavedPosition.current = currentProgress;
     }

@@ -7,7 +7,7 @@ import pdfjsWorker from 'pdfjs-dist/build/pdf.worker.mjs?url';
 
 pdfjs.GlobalWorkerOptions.workerSrc = pdfjsWorker;
 
-export async function extractTextFromPdf(file: File): Promise<string> {
+export async function extractTextFromPdf(file: File): Promise<{ text: string, toc: { title: string, charOffset: number }[] }> {
   return withTimeout(
     (async () => {
       console.log(`Iniciando extração de PDF: ${file.name}`);
@@ -21,29 +21,54 @@ export async function extractTextFromPdf(file: File): Promise<string> {
         
         const pdf = await loadingTask.promise;
         console.log(`PDF carregado. Páginas: ${pdf.numPages}`);
+        
+        // Extract TOC (Outline) if available
+        let toc: { title: string, charOffset: number }[] = [];
+        try {
+          const outline = await pdf.getOutline();
+          if (outline) {
+            // Flatten the hierarchical PDF outline
+            const flattenOutline = (items: any[]) => {
+              items.forEach(item => {
+                if (item.title) {
+                  toc.push({ title: item.title, charOffset: -1 });
+                }
+                if (item.items && item.items.length > 0) {
+                  flattenOutline(item.items);
+                }
+              });
+            };
+            flattenOutline(outline);
+            console.log(`Outline found with ${toc.length} items`);
+          }
+        } catch (tocErr) {
+          console.warn('Erro ao extrair sumário do PDF:', tocErr);
+        }
+
         let fullText = '';
-        const maxPages = Math.min(pdf.numPages, 150); // Aumentado um pouco para 150
+        const maxPages = Math.min(pdf.numPages, 150);
 
         for (let i = 1; i <= maxPages; i++) {
-          console.log(`Processando página ${i}/${maxPages}...`);
-          try {
-            const page = await pdf.getPage(i);
-            const textContent = await page.getTextContent();
-            const pageText = textContent.items
-              .map((item: any) => item.str)
-              .join(' ');
-            fullText += pageText + '\n\n';
-          } catch (pageErr) {
-            console.warn(`Erro ao processar página ${i}:`, pageErr);
-          }
+          const page = await pdf.getPage(i);
+          const textContent = await page.getTextContent();
+          const pageText = textContent.items
+            .map((item: any) => item.str)
+            .join(' ');
+          fullText += pageText + '\n\n';
         }
 
         if (!fullText.trim()) {
           throw new Error('Nenhum texto extraível encontrado no PDF.');
         }
 
-        console.log(`Extração de PDF concluída. Caracteres: ${fullText.length}`);
-        return fullText;
+        // Post-process TOC offsets
+        toc = toc.map(item => {
+          const offset = fullText.indexOf(item.title);
+          return { ...item, charOffset: offset };
+        }).filter(item => item.charOffset !== -1);
+
+        console.log(`Extração de PDF concluída. Caracteres: ${fullText.length}. Itens TOC: ${toc.length}`);
+        return { text: fullText, toc };
       } catch (error) {
         console.error('Erro detalhado no processamento do PDF:', error);
         throw error;

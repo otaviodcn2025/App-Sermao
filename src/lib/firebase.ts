@@ -36,6 +36,19 @@ interface FirestoreErrorInfo {
 }
 
 export function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
+  const errorMessage = error instanceof Error ? error.message : String(error);
+  
+  // Specific handling for quota errors
+  if (errorMessage.includes('resource-exhausted') || errorMessage.includes('Quota exceeded')) {
+    console.warn('Firestore Quota Exceeded detected');
+    // We only alert once to avoid spamming if hit by multiple errors
+    if (!(window as any).quotaAlerted) {
+      alert("LIMITE DE USO ATINGIDO: O plano gratuito do banco de dados atingiu o limite diário de gravações. \n\nO sistema continuará funcionando para leitura, mas novas alterações não poderão ser salvas até amanhã.\n\nPor favor, evite fazer muitas alterações seguidas.");
+      (window as any).quotaAlerted = true;
+      setTimeout(() => { (window as any).quotaAlerted = false; }, 60000); // Reset alert gate after 1 minute
+    }
+  }
+
   const errInfo: FirestoreErrorInfo = {
     error: error instanceof Error ? error.message : String(error),
     authInfo: {

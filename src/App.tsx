@@ -29,7 +29,7 @@ import Editor from './components/Editor';
 import BibleSearch from './components/BibleSearch';
 import Auth from './components/Auth';
 import { Sermon, UserProfile, Resource, Series, Slide } from './types';
-import { cn, formatDate, parseSlides } from './lib/utils';
+import { cn, formatDate, parseSlides, withTimeout } from './lib/utils';
 import { 
   generateSermonOutline, 
   analyzeVerse, 
@@ -537,17 +537,19 @@ export default function App() {
       const isPdf = file.name.toLowerCase().endsWith('.pdf');
       const isEpub = file.name.toLowerCase().endsWith('.epub');
 
-      let text = '';
+      let extractionResult: { text: string, toc?: { title: string, charOffset: number }[] };
       if (isPdf) {
-        text = await extractTextFromPdf(file);
+        extractionResult = await extractTextFromPdf(file);
       } else if (isEpub) {
-        text = await extractTextFromEpub(file);
+        extractionResult = await extractTextFromEpub(file);
       } else {
         throw new Error('Formato de arquivo não suportado. Use PDF ou ePub.');
       }
 
+      const { text, toc } = extractionResult;
+
       console.log('Fase de extração terminada. Iniciando resumo com IA...');
-      const summary = await summarizeResource(file.name, text);
+      const summary = await withTimeout(summarizeResource(file.name, text), 35000, "O resumo da IA demorou muito.");
       
       // Auto-tagging with IA
       console.log('Iniciando auto-tagging...');
@@ -576,6 +578,7 @@ export default function App() {
         extractedText: text,
         summary: summary,
         tags: tags,
+        toc: toc,
         createdAt: Date.now()
       };
       

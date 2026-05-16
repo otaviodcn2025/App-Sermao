@@ -54,7 +54,8 @@ import {
   History,
   Languages as GreekIcon,
   Presentation,
-  X
+  X,
+  Loader2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
@@ -79,6 +80,9 @@ export default function Editor({ content, onChange, onAiAction, title, onTitleCh
   const [lexiconTooltip, setLexiconTooltip] = useState<{ term: LexiconTerm, pos: { left: number, top: number } } | null>(null);
   const [bibleSuggest, setBibleSuggest] = useState<{ query: string, range: { from: number, to: number } } | null>(null);
   const [isLexiconLoading, setIsLexiconLoading] = useState(false);
+
+  const [isSaving, setIsSaving] = useState(false);
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const editor = useEditor({
     extensions: [
@@ -123,7 +127,15 @@ export default function Editor({ content, onChange, onAiAction, title, onTitleCh
     content,
     editable: !readOnly,
     onUpdate: ({ editor }) => {
-      onChange(editor.getHTML());
+      const html = editor.getHTML();
+      setIsSaving(true);
+      
+      // Debounce the call to onChange to save Firestore write quota
+      if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+      saveTimeoutRef.current = setTimeout(() => {
+        onChange(html);
+        setIsSaving(false);
+      }, 2500); // Wait 2.5 seconds of inactivity to save
       
       // Auto-detect Bible references for floating button
       const { selection } = editor.state;
@@ -210,7 +222,7 @@ export default function Editor({ content, onChange, onAiAction, title, onTitleCh
 
   // Keep editor in sync if content prop changes outside (e.g. AI generation or shared load)
   useEffect(() => {
-    if (editor && content !== editor.getHTML()) {
+    if (editor && content !== editor.getHTML() && !editor.isFocused) {
       editor.commands.setContent(content);
     }
   }, [content, editor]);
@@ -397,6 +409,12 @@ export default function Editor({ content, onChange, onAiAction, title, onTitleCh
           </div>
 
           <div className="ml-auto flex items-center gap-1.5 px-1 border-l border-slate-200">
+            {isSaving && (
+              <div className="flex items-center gap-1.5 px-2 py-1 text-[9px] font-bold text-slate-400 italic">
+                <Loader2 size={12} className="animate-spin" />
+                A guardar...
+              </div>
+            )}
             <button
               onClick={handleDeepLexicon}
               disabled={isLexiconLoading}
