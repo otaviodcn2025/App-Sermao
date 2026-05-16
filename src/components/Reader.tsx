@@ -350,8 +350,8 @@ export default function Reader({ resource, onClose, onUpdatePosition, onAddHighl
     }
     */
     
-    // Save position if it changed significantly (more than 5%)
-    if (Math.abs(currentProgress - lastSavedPosition.current) > 0.05) {
+    // Save position only if it changed significantly (more than 10%)
+    if (Math.abs(currentProgress - lastSavedPosition.current) > 0.10) {
       onUpdatePosition?.(currentProgress);
       lastSavedPosition.current = currentProgress;
     }

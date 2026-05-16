@@ -135,7 +135,7 @@ export default function Editor({ content, onChange, onAiAction, title, onTitleCh
       saveTimeoutRef.current = setTimeout(() => {
         onChange(html);
         setIsSaving(false);
-      }, 2500); // Wait 2.5 seconds of inactivity to save
+      }, 4000); // 4 seconds debounce for maximum quota conservation
       
       // Auto-detect Bible references for floating button
       const { selection } = editor.state;

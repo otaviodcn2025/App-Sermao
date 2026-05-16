@@ -43,9 +43,9 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
     console.warn('Firestore Quota Exceeded detected');
     // We only alert once to avoid spamming if hit by multiple errors
     if (!(window as any).quotaAlerted) {
-      alert("LIMITE DE USO ATINGIDO: O plano gratuito do banco de dados atingiu o limite diário de gravações. \n\nO sistema continuará funcionando para leitura, mas novas alterações não poderão ser salvas até amanhã.\n\nPor favor, evite fazer muitas alterações seguidas.");
+      alert("⚠️ LIMITE DIÁRIO ATINGIDO (Firebase Quota)\n\nO limite de gravações gratuitas para hoje foi atingido. \n\nO sistema continuará funcionando para CONSULTA E LEITURA, mas NOVAS ALTERAÇÕES (escrever sermões ou anexar livros) não poderão ser salvas até o reset diário da quota (geralmente à meia-noite).\n\nPara evitar isso futuramente, o app agora salva as edições de forma mais espaçada.");
       (window as any).quotaAlerted = true;
-      setTimeout(() => { (window as any).quotaAlerted = false; }, 60000); // Reset alert gate after 1 minute
+      setTimeout(() => { (window as any).quotaAlerted = false; }, 300000); // 5 minutes gate
     }
   }
 
