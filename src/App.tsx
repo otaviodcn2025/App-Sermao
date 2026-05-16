@@ -41,7 +41,9 @@ import {
   translateAndConsult,
   analyzeThematicConnections,
   semanticSearch,
-  improveSlide
+  improveSlide,
+  DEFAULT_MODEL,
+  getAIClient
 } from './lib/gemini';
 import { generatePowerPoint } from './lib/pptx';
 import { auth, db, handleFirestoreError, OperationType } from './lib/firebase';
@@ -528,6 +530,9 @@ export default function App() {
   const handleResourceUpload = async (file: File) => {
     if (!user || !db) return;
     
+    console.log(`Upload solicitado: ${file.name} (${file.size} bytes)`);
+    setIsAiLoading(true);
+    
     try {
       const isPdf = file.name.toLowerCase().endsWith('.pdf');
       const isEpub = file.name.toLowerCase().endsWith('.epub');
@@ -541,23 +546,25 @@ export default function App() {
         throw new Error('Formato de arquivo não suportado. Use PDF ou ePub.');
       }
 
-      setIsAiLoading(true);
+      console.log('Fase de extração terminada. Iniciando resumo com IA...');
       const summary = await summarizeResource(file.name, text);
       
-      // Auto-tagging with AI
-      const tagsPrompt = `A partir deste resumo, sugira 3 a 5 etiquetas (tags) curtas de temas teológicos separadas por vírgula (ex: Fé, Graça, Salvação): "${summary.substring(0, 500)}"`;
-      const ai = (await import('./lib/gemini')).getAIClient();
+      // Auto-tagging with IA
+      console.log('Iniciando auto-tagging...');
+      const tagsPrompt = `A partir deste resumo, sugira 3 a 5 etiquetas (tags) curtas de temas teológicos separadas por vírgula (ex: Fé, Graça, Salvação). Retorne apenas as palavras separadas por vírgula: "${summary.substring(0, 500)}"`;
+      const ai = getAIClient();
       let tags: string[] = [];
       if (ai) {
         try {
-          const res = await ai.models.generateContent({ model: 'gemini-1.5-flash', contents: tagsPrompt });
-          tags = (res.text || '').split(',').map(t => t.trim().replace(/^#/, ''));
+          const res = await ai.models.generateContent({ model: DEFAULT_MODEL, contents: tagsPrompt });
+          const textRes = res.text || '';
+          tags = textRes.split(',').map(t => t.trim().replace(/^#/, '')).filter(Boolean);
         } catch (e) {
           console.error("Auto-tagging error:", e);
         }
       }
-      setIsAiLoading(false);
 
+      console.log('Salvando no Firestore...');
       const resourceRef = collection(db, 'resources');
       const newDoc = doc(resourceRef);
       
@@ -573,11 +580,14 @@ export default function App() {
       };
       
       await setDoc(newDoc, resource);
+      console.log('Livro anexado com sucesso!');
     } catch (err) {
-      setIsAiLoading(false);
       const message = err instanceof Error ? err.message : 'Erro ao processar arquivo';
+      console.error('Falha no upload:', err);
       alert(message);
       handleFirestoreError(err, OperationType.CREATE, 'resources');
+    } finally {
+      setIsAiLoading(false);
     }
   };
 

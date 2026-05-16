@@ -15,6 +15,21 @@ export function formatDate(timestamp: number) {
   }).format(new Date(timestamp));
 }
 
+export function withTimeout<T>(promise: Promise<T>, timeoutMs: number, errorMessage: string = 'Operação expirou'): Promise<T> {
+  let timeoutId: any;
+  const timeoutPromise = new Promise<T>((_, reject) => {
+    timeoutId = setTimeout(() => {
+      reject(new Error(errorMessage));
+    }, timeoutMs);
+  });
+
+  return Promise.race([
+    promise,
+    timeoutPromise
+  ]).finally(() => {
+    clearTimeout(timeoutId);
+  });
+}
 export function parseSlides(text: string) {
   const slides: { title: string; content: string; imageDescription?: string }[] = [];
   // Split by "Slide X" where X is a number

@@ -40,7 +40,7 @@ DIRETRIZES TEOLÓGICAS (CBB):
 
 Responda sempre em Português (Brasil) de forma clara, inspiradora, respeitosa e biblicamente fundamentada.`;
 
-const DEFAULT_MODEL = "gemini-3-flash-preview"; 
+export const DEFAULT_MODEL = "gemini-3-flash-preview"; 
 
 export async function generateSermonOutline(topic: string, baseText?: string, context?: string, userPrompt?: string, style: 'traditional' | 'practical' | 'historical' = 'traditional') {
   try {
