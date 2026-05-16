@@ -15,7 +15,8 @@ import {
   Info,
   Bookmark,
   Menu,
-  List
+  List,
+  Search
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '@/src/lib/utils';
@@ -50,70 +51,115 @@ export default function Reader({ resource, onClose, onUpdatePosition, onAddHighl
   const [showControls, setShowControls] = useState(true);
   const [progress, setProgress] = useState(0);
   const [showSidebar, setShowSidebar] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  
+  // Calculate Pages based on character count (approx 2500 characters per page)
+  const CHARS_PER_PAGE = 2500;
+  const totalPages = Math.ceil((resource.extractedText?.length || 0) / CHARS_PER_PAGE) || 1;
+  const currentPage = Math.max(1, Math.min(totalPages, Math.round(progress * totalPages) || 1));
+  
   const [selection, setSelection] = useState<{ start: number; end: number; text: string; x: number; y: number } | null>(null);
   
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const contentRef = useRef<HTMLDivElement>(null);
   const lastSavedPosition = useRef<number>(resource.lastReadPosition || 0);
+  const contentRef = useRef<HTMLDivElement>(null);
+
+  // Helper for consistent text cleaning shared by both TOC and Renderer
+  const processedText = React.useMemo(() => {
+    const text = resource.extractedText || '';
+    if (!text) return '';
+    
+    // We want to join lines that were broken mid-sentence but keep headers on their own line
+    // Improved heuristic: if a line is short and uppercase/title case, it's likely a header
+    const lines = text.split('\n');
+    let processed = '';
+    
+    lines.forEach((line, i) => {
+      const trimmed = line.trim();
+      const nextTrimmed = lines[i+1]?.trim() || '';
+      
+      if (!trimmed) {
+        processed += '\n\n';
+        return;
+      }
+
+      // If it looks like a header (short, special regex), keep it isolated
+      const isHeader = trimmed.length < 60 && (
+        /^(?:Cap[íi]tulo|Chapter|T[óo]pico|Se[çc][ãa]o|Parte|Lição|Estudo|Mensagem|Livro)/i.test(trimmed) ||
+        trimmed === trimmed.toUpperCase() ||
+        /^\d+$/.test(trimmed)
+      );
+
+      if (isHeader) {
+        processed += '\n' + trimmed + '\n';
+      } else {
+        // Join with space if next line exists and current doesn't end with sentence terminator
+        const endsWithTerminator = /[.!?:;]$/.test(trimmed);
+        processed += trimmed + (endsWithTerminator ? '\n' : ' ');
+      }
+    });
+
+    return processed.replace(/\n{3,}/g, '\n\n').trim();
+  }, [resource.extractedText]);
 
   // Parse sections from text
   const sections = React.useMemo(() => {
     const rawText = resource.extractedText || '';
     const lines = rawText.split('\n');
-    const foundSections: { id: string; title: string; lineIndex: number }[] = [
-      { id: 'start', title: 'Início / Introdução', lineIndex: 0 }
+    const foundSections: { id: string; title: string; charOffset: number }[] = [
+      { id: 'start', title: 'Início / Capa', charOffset: 0 }
     ];
 
-    // Regex for various heading styles
-    const chapterRegex = /^(?:Cap[íi]tulo|Chapter|T[óo]pico|Se[çc][ãa]o|Parte|Lição)\s+([0-9]+|[IVXLCDM]+)($|[:\s-].*)/i;
-    const numberedHeadingRegex = /^(\d+|[A-Z]|[IVXLCDM]+)[\.\)]\s+(.{3,100})$/i;
-    const keywordRegex = /^(?:INTRODUÇ[ÃA]O|CONCLUS[ÃA]O|RESUMO|NOTAS|REFERÊNCIAS|POSFÁCIO|PREFÁCIO|BIBLIOGRAFIA|APÊNDICE|CRÉDITOS|DEDICATÓRIA)$/i;
+    let currentCharOffset = 0;
+    
+    // Improved Detection Patterns
+    const bibleBooks = [
+      'Gênesis', 'Êxodo', 'Levítico', 'Números', 'Deuteronômio', 'Josué', 'Juízes', 'Rute', '1 Samuel', '2 Samuel',
+      '1 Reis', '2 Reis', '1 Crônicas', '2 Crônicas', 'Esdras', 'Neemias', 'Ester', 'Jó', 'Salmos', 'Provérbios',
+      'Eclesiastes', 'Cânticos', 'Isaías', 'Jeremias', 'Lamentações', 'Ezequiel', 'Daniel', 'Oséias', 'Joel', 'Amós',
+      'Obadias', 'Jonas', 'Miquéias', 'Naum', 'Habacuque', 'Sofonias', 'Ageu', 'Zacarias', 'Malaquias',
+      'Mateus', 'Marcos', 'Lucas', 'João', 'Atos', 'Romanos', '1 Coríntios', '2 Coríntios', 'Gálatas', 'Efésios',
+      'Filipenses', 'Colossenses', '1 Tessalonicenses', '2 Tessalonicenses', '1 Timóteo', '2 Timóteo', 'Tito', 'Filemom',
+      'Hebreus', 'Tiago', '1 Pedro', '2 Pedro', '1 João', '2 João', '3 João', 'Judas', 'Apocalipse'
+    ];
+
+    const bibleRefRegex = new RegExp(`^(${bibleBooks.join('|')})(\\s+\\d+|\\s*$)`, 'i');
+    const chapterRegex = /^(?:Cap[íi]tulo|Chapter|T[óo]pico|Se[çc][ãa]o|Parte|Lição|Estudo|Mensagem)\s+([0-9]+|[IVXLCDM]+)($|[:\s-].*)/i;
+    const keywordRegex = /^(?:INTRODUÇ[ÃA]O|CONCLUS[ÃA]O|RESUMO|NOTAS|REFERÊNCIAS|POSFÁCIO|PREFÁCIO|BIBLIOGRAFIA|APÊNDICE|CRÉDITOS|DEDICATÓRIA|PREF[ÁA]CIO|INTRODUCED|SUMMARY|NOTES|CONCLUD|CHAPTER)$/i;
+    const numberedRegex = /^\d+$/; // Useful for Bible chapters that are just a number on a line
 
     lines.forEach((line, index) => {
       const trimmed = line.trim();
-      if (!trimmed || trimmed.length < 3) return;
+      if (trimmed.length > 0 && trimmed.length < 120) {
+        const isBibleRef = bibleRefRegex.test(trimmed);
+        const isChapterMarker = chapterRegex.test(trimmed);
+        const isNumbered = numberedRegex.test(trimmed);
+        const isKeyword = keywordRegex.test(trimmed);
+        const isUppercase = trimmed.length > 4 && trimmed.length < 60 && trimmed === trimmed.toUpperCase() && /[A-Z]/.test(trimmed);
 
-      const mdMatch = trimmed.match(/^#+\s+(.+)$/);
-      const chapterMatch = trimmed.match(chapterRegex);
-      const numberedMatch = trimmed.match(numberedHeadingRegex);
-      const isKeyword = keywordRegex.test(trimmed);
-      
-      // Avoid capturing the same line multiple times
-      if (mdMatch) {
-        foundSections.push({ id: `section-${index}`, title: mdMatch[1], lineIndex: index });
-        return;
+        if (isBibleRef || isChapterMarker || isKeyword || (isNumbered && trimmed.length < 4) || isUppercase) {
+          // If it's a number, make it clearer in the menu
+          const title = isNumbered ? `Capítulo ${trimmed}` : trimmed;
+          
+          foundSections.push({
+            id: `section-${index}`,
+            title: title,
+            charOffset: currentCharOffset
+          });
+        }
       }
-      
-      if (chapterMatch || isKeyword) {
-        foundSections.push({ id: `section-${index}`, title: trimmed, lineIndex: index });
-        return;
-      }
-
-      if (numberedMatch) {
-         // Numbered matches are often headings if they are short enough or ALL CAPS
-         const isCaps = trimmed === trimmed.toUpperCase();
-         if (trimmed.length < 60 || isCaps) {
-           foundSections.push({ id: `section-${index}`, title: trimmed, lineIndex: index });
-           return;
-         }
-      }
-
-      // Heuristic for Title-like lines: 
-      // Short, Uppercase, and surrounded by empty lines (or start of doc)
-      const isShort = trimmed.length < 70;
-      const isUppercase = trimmed === trimmed.toUpperCase() && /[A-Z]/.test(trimmed);
-      const isIsolated = (index === 0 || lines[index - 1].trim() === '') && 
-                         (index === lines.length - 1 || lines[index + 1].trim() === '');
-      const isPageNumber = /^(?:P[áa]gina|Page|Pag\.)\s*\d+$/i.test(trimmed) || /^\d+$/i.test(trimmed);
-
-      if (isUppercase && isShort && isIsolated && !isPageNumber) {
-        foundSections.push({ id: `section-${index}`, title: trimmed, lineIndex: index });
-      }
+      currentCharOffset += line.length + 1;
     });
 
-    // Remove duplicates (sometimes headers appear multiple times near each other)
-    return foundSections.filter((v, i, a) => a.findIndex(t => t.title === v.title && Math.abs(t.lineIndex - v.lineIndex) < 5) === i);
+    // Filtering to remove noise and very close entries
+    return foundSections.filter((v, i, a) => 
+      a.findIndex(t => t.title.toLowerCase() === v.title.toLowerCase() && Math.abs(t.charOffset - v.charOffset) < 300) === i
+    );
   }, [resource.extractedText]);
+
+  const filteredSections = sections.filter(s => 
+    s.title.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   const scrollToPosition = (position: number) => {
     if (scrollContainerRef.current) {
@@ -126,15 +172,14 @@ export default function Reader({ resource, onClose, onUpdatePosition, onAddHighl
     }
   };
 
-  const scrollToSection = (lineIndex: number) => {
-    if (scrollContainerRef.current && contentRef.current) {
-      // Approximate position based on line index relative to total lines
-      const totalLines = (resource.extractedText || '').split('\n').length;
-      const ratio = lineIndex / totalLines;
+  const scrollToSection = (charOffset: number) => {
+    if (scrollContainerRef.current) {
       const container = scrollContainerRef.current;
+      const totalLen = processedText.length || 1;
+      const ratio = charOffset / totalLen;
       
       container.scrollTo({
-        top: ratio * container.scrollHeight,
+        top: ratio * (container.scrollHeight - container.clientHeight),
         behavior: 'smooth'
       });
       setShowSidebar(false);
@@ -216,21 +261,7 @@ export default function Reader({ resource, onClose, onUpdatePosition, onAddHighl
 
   // Helper to render text with highlights
   const renderContent = () => {
-    let rawText = resource.extractedText || '';
-    
-    // SMART TEXT CLEANING: 
-    // Usually, extracted PDF/ePub text has hard line breaks at every line.
-    // We try to join these if they don't seem to be intentional paragraphs.
-    const cleanExtractedText = (text: string) => {
-      if (!text) return '';
-      // Always clean for consistent formatting; highlights will be relative to this cleaned text
-      const paragraphs = text.split(/\n\s*\n/);
-      return paragraphs
-        .map(p => p.replace(/(?<!\n)\n(?!\n)/g, ' ').replace(/\s+/g, ' ').trim())
-        .join('\n\n');
-    };
-
-    const text = cleanExtractedText(rawText);
+    const text = processedText;
     const highlights = resource.highlights || [];
     
     if (highlights.length === 0) return text;
@@ -408,13 +439,29 @@ export default function Reader({ resource, onClose, onUpdatePosition, onAddHighl
                     </button>
                   </div>
                   <h2 className="text-sm font-black tracking-tight leading-tight line-clamp-2">{resource.title}</h2>
+                  
+                  <div className="mt-4 relative group">
+                    <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-orange-500 transition-colors">
+                      <Search size={14} />
+                    </div>
+                    <input 
+                      type="text"
+                      placeholder="Pesquisar capítulo ou termo..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className={cn(
+                        "w-full pl-9 pr-4 py-2 text-[11px] font-bold rounded-xl border border-black/5 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all",
+                        currentTheme.ui === 'bg-white text-slate-900 shadow-xl' ? 'bg-slate-50' : 'bg-white/5'
+                      )}
+                    />
+                  </div>
                </div>
                
                <div className="flex-1 overflow-y-auto p-4 space-y-1">
-                  {sections.map((section) => (
+                  {filteredSections.length > 0 ? filteredSections.map((section) => (
                     <button
                       key={section.id}
-                      onClick={() => scrollToSection(section.lineIndex)}
+                      onClick={() => scrollToSection(section.charOffset)}
                       className="w-full text-left p-4 rounded-2xl hover:bg-black/5 transition-all group flex items-center gap-4 active:bg-black/10"
                     >
                        <div className="p-2 rounded-lg bg-black/5 group-hover:bg-orange-500 transition-colors">
@@ -425,16 +472,23 @@ export default function Reader({ resource, onClose, onUpdatePosition, onAddHighl
                            {section.title}
                          </span>
                          <span className="text-[10px] opacity-40 font-bold block mt-0.5">
-                           Posição: {Math.round((section.lineIndex / ((resource.extractedText || '').split('\n').length || 1)) * 100)}%
+                           Posição: {Math.round((section.charOffset / (processedText.length || 1)) * 100)}%
                          </span>
                        </div>
                     </button>
-                  ))}
+                  )) : (
+                    <div className="p-12 text-center">
+                      <div className="w-12 h-12 bg-black/5 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                        <Search size={20} className="text-slate-300" />
+                      </div>
+                      <p className="text-[10px] uppercase font-black tracking-widest opacity-40">Nenhum resultado encontrado</p>
+                    </div>
+                  )}
                </div>
                
                <div className="p-8 border-t border-black/5 bg-black/[0.02] space-y-4">
                   <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-widest opacity-40">
-                    <span>Progresso total</span>
+                    <span>Página {currentPage} de {totalPages}</span>
                     <span>{Math.round(progress * 100)}%</span>
                   </div>
                   <div className="h-1.5 w-full bg-black/5 rounded-full overflow-hidden">
@@ -497,7 +551,7 @@ export default function Reader({ resource, onClose, onUpdatePosition, onAddHighl
 
             <div className="flex items-center gap-2 md:gap-6">
               <div className="hidden sm:block text-[10px] font-black uppercase tracking-widest opacity-50">
-                Lendo: {Math.round(progress * 100)}%
+                Página {currentPage} / {totalPages} • {Math.round(progress * 100)}%
               </div>
 
               {/* Tooltip Info (Summary) */}
