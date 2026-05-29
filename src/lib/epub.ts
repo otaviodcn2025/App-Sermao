@@ -59,8 +59,8 @@ export async function extractTextFromEpub(file: File): Promise<{ text: string, t
             }
           }
           
-          if (fullText.length > 800000) {
-            console.warn('Limite de segurança de 800k caracteres atingido.');
+          if (fullText.length > 600000) {
+            console.warn('Limite de segurança de 600k caracteres atingido para ePub. Parando extração.');
             break;
           }
         }

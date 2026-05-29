@@ -49,12 +49,22 @@ export async function extractTextFromPdf(file: File): Promise<{ text: string, to
         const maxPages = Math.min(pdf.numPages, 150);
 
         for (let i = 1; i <= maxPages; i++) {
-          const page = await pdf.getPage(i);
-          const textContent = await page.getTextContent();
-          const pageText = textContent.items
-            .map((item: any) => item.str)
-            .join(' ');
-          fullText += pageText + '\n\n';
+          try {
+            const page = await pdf.getPage(i);
+            const textContent = await page.getTextContent();
+            const pageText = textContent.items
+              .map((item: any) => item.str)
+              .join(' ');
+            fullText += pageText + '\n\n';
+
+            // Safety limit to guarantee the text never exceeds the Firestore 1MB document size limit
+            if (fullText.length > 600000) {
+              console.warn('Limite de segurança de 600k caracteres atingido para PDF. Parando extração.');
+              break;
+            }
+          } catch (pageErr) {
+            console.warn(`Erro parcial ao ler página ${i} do PDF, continuando...`, pageErr);
+          }
         }
 
         if (!fullText.trim()) {
