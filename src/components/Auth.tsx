@@ -93,7 +93,7 @@ export default function Auth() {
             <Sparkles size={32} className="text-white" />
           </div>
           <h2 className="text-2xl font-black text-slate-800 tracking-tight">
-            Pastoreai
+            Sermão Digital
           </h2>
           <p className="text-slate-500 text-sm mt-2">
             Como organizar sermões e pregar com clareza

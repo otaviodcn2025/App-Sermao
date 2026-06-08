@@ -873,7 +873,7 @@ export default function App() {
             <div className="w-8 h-8 bg-violet-600 rounded-lg flex items-center justify-center">
               <Sparkles size={18} className="text-white" />
             </div>
-            <h1 className="font-extrabold text-slate-800 tracking-tight">Pastoreai</h1>
+            <h1 className="font-extrabold text-slate-800 tracking-tight">Sermão Digital</h1>
           </div>
           <button 
             onClick={() => setMobileTab('editor')}
