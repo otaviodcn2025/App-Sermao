@@ -1,6 +1,6 @@
 {
-  "name": "Sermão Digital",
-  "description": "Assistente de homilética inteligente para pastores e líderes, com editor rico, esboços automáticos, ferramentas de apresentação e exportação para Word.",
+  "name": "Pastoreai",
+  "description": "Painel ministerial inteligente com editor de sermões, séries de mensagens, agenda de pregações, análise pastoral e biblioteca teológica avançada.",
   "requestFramePermissions": [],
   "majorCapabilities": []
 }

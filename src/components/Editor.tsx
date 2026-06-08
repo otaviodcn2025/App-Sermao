@@ -324,7 +324,7 @@ export default function Editor({ content, onChange, onAiAction, title, onTitleCh
             <button
               // @ts-ignore
               onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
-              className={cn("p-1.5 rounded hover:bg-slate-200 transition-colors", editor.isActive('heading', { level: 1 }) && "bg-slate-200 text-orange-600")}
+              className={cn("p-1.5 rounded hover:bg-slate-200 transition-colors", editor.isActive('heading', { level: 1 }) && "bg-slate-200 text-violet-600")}
               title="Título 1"
             >
               <Heading1 size={16} />
@@ -332,7 +332,7 @@ export default function Editor({ content, onChange, onAiAction, title, onTitleCh
             <button
               // @ts-ignore
               onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
-              className={cn("p-1.5 rounded hover:bg-slate-200 transition-colors", editor.isActive('heading', { level: 2 }) && "bg-slate-200 text-orange-600")}
+              className={cn("p-1.5 rounded hover:bg-slate-200 transition-colors", editor.isActive('heading', { level: 2 }) && "bg-slate-200 text-violet-600")}
               title="Título 2"
             >
               <Heading2 size={16} />
@@ -343,7 +343,7 @@ export default function Editor({ content, onChange, onAiAction, title, onTitleCh
             <button
               // @ts-ignore
               onClick={() => editor.chain().focus().toggleBold().run()}
-              className={cn("p-1.5 rounded hover:bg-slate-200 transition-colors font-bold", editor.isActive('bold') && "bg-slate-200 text-orange-600")}
+              className={cn("p-1.5 rounded hover:bg-slate-200 transition-colors font-bold", editor.isActive('bold') && "bg-slate-200 text-violet-600")}
               title="Negrito"
             >
               <Bold size={16} />
@@ -351,7 +351,7 @@ export default function Editor({ content, onChange, onAiAction, title, onTitleCh
             <button
               // @ts-ignore
               onClick={() => editor.chain().focus().toggleItalic().run()}
-              className={cn("p-1.5 rounded hover:bg-slate-200 transition-colors italic", editor.isActive('italic') && "bg-slate-200 text-orange-600")}
+              className={cn("p-1.5 rounded hover:bg-slate-200 transition-colors italic", editor.isActive('italic') && "bg-slate-200 text-violet-600")}
               title="Itálico"
             >
               <Italic size={16} />
@@ -359,7 +359,7 @@ export default function Editor({ content, onChange, onAiAction, title, onTitleCh
             <button
               // @ts-ignore
               onClick={() => editor.chain().focus().toggleUnderline().run()}
-              className={cn("p-1.5 rounded hover:bg-slate-200 transition-colors", editor.isActive('underline') && "bg-slate-200 text-orange-600")}
+              className={cn("p-1.5 rounded hover:bg-slate-200 transition-colors", editor.isActive('underline') && "bg-slate-200 text-violet-600")}
               title="Sublinhado"
             >
               <UnderlineIcon size={16} />
@@ -370,7 +370,7 @@ export default function Editor({ content, onChange, onAiAction, title, onTitleCh
             <button
               // @ts-ignore
               onClick={() => editor.chain().focus().setTextAlign('left').run()}
-              className={cn("p-1.5 rounded hover:bg-slate-200 transition-colors", editor.isActive({ textAlign: 'left' }) && "bg-slate-200 text-orange-600")}
+              className={cn("p-1.5 rounded hover:bg-slate-200 transition-colors", editor.isActive({ textAlign: 'left' }) && "bg-slate-200 text-violet-600")}
               title="Alinhar à Esquerda"
             >
               <AlignLeft size={16} />
@@ -378,7 +378,7 @@ export default function Editor({ content, onChange, onAiAction, title, onTitleCh
             <button
               // @ts-ignore
               onClick={() => editor.chain().focus().setTextAlign('center').run()}
-              className={cn("p-1.5 rounded hover:bg-slate-200 transition-colors", editor.isActive({ textAlign: 'center' }) && "bg-slate-200 text-orange-600")}
+              className={cn("p-1.5 rounded hover:bg-slate-200 transition-colors", editor.isActive({ textAlign: 'center' }) && "bg-slate-200 text-violet-600")}
               title="Centralizar"
             >
               <AlignCenter size={16} />
@@ -439,7 +439,7 @@ export default function Editor({ content, onChange, onAiAction, title, onTitleCh
             </button>
             <button
               onClick={handleShare}
-              className="flex items-center gap-2 px-3 py-1.5 bg-orange-600 text-white rounded-md hover:bg-orange-700 transition-colors text-[10px] font-bold shadow-sm shrink-0"
+              className="flex items-center gap-2 px-3 py-1.5 bg-violet-600 text-white rounded-md hover:bg-violet-700 transition-colors text-[10px] font-bold shadow-sm shrink-0"
             >
               <Share2 size={14} />
               <span className="hidden sm:inline">Partilhar</span>
@@ -449,7 +449,27 @@ export default function Editor({ content, onChange, onAiAction, title, onTitleCh
       </div>
 
       <div className="flex-1 overflow-y-auto">
-        <div className="px-4 lg:px-8 pt-6 sm:pt-12">
+        <div className="px-4 lg:px-8 pt-6 sm:pt-8 pb-1">
+          {/* Preaching time & homiletical status indicators */}
+          {(() => {
+            const rawText = editor ? editor.getText() : '';
+            const words = rawText.split(/\s+/).filter(Boolean).length;
+            const estimatedMins = Math.max(1, Math.ceil(words / 130));
+            return (
+              <div className="flex flex-wrap items-center gap-2 mb-4">
+                <span className="inline-flex items-center gap-1 text-[10px] uppercase font-black tracking-wider text-slate-500 bg-slate-100 px-2.5 py-1 rounded-md">
+                  ⏱️ Estimativa: ~{estimatedMins} min
+                </span>
+                <span className="inline-flex items-center gap-1 text-[10px] uppercase font-black tracking-wider text-slate-500 bg-slate-100 px-2.5 py-1 rounded-md">
+                  ✍️ {words} palavras
+                </span>
+                <span className="inline-flex items-center gap-1 text-[10px] uppercase font-black tracking-wider text-violet-600 bg-violet-50 px-2.5 py-1 rounded-md">
+                  💡 Análise Homilética Ativa
+                </span>
+              </div>
+            );
+          })()}
+
           <div className="flex items-center justify-between gap-2 sm:gap-4 mb-2">
             <input 
               type="text"
@@ -460,14 +480,14 @@ export default function Editor({ content, onChange, onAiAction, title, onTitleCh
             />
             <button
               onClick={() => onAiAction('titles', '')}
-              className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1 sm:py-1.5 bg-orange-100 text-orange-700 rounded-lg hover:bg-orange-200 transition-all text-[9px] sm:text-[10px] font-black uppercase tracking-wider shrink-0 shadow-sm"
+              className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1 sm:py-1.5 bg-violet-100 text-violet-700 rounded-lg hover:bg-violet-200 transition-all text-[9px] sm:text-[10px] font-black uppercase tracking-wider shrink-0 shadow-sm"
               title="Gerar Sugestões de Título"
             >
               <Wand2 size={14} />
               <span className="hidden sm:inline">IA Títulos</span>
             </button>
           </div>
-          <div className="w-16 sm:w-20 h-1 sm:h-1.5 bg-orange-500 rounded-full mb-6 sm:mb-8" />
+          <div className="w-16 sm:w-20 h-1 sm:h-1.5 bg-violet-600 rounded-full mb-6 sm:mb-8" />
         </div>
         <EditorContent editor={editor} />
         
@@ -480,13 +500,13 @@ export default function Editor({ content, onChange, onAiAction, title, onTitleCh
               exit={{ opacity: 0, scale: 0.9 }}
               className="absolute bottom-8 left-1/2 -translate-x-1/2 z-[100] bg-white border border-slate-200 shadow-2xl rounded-2xl p-2 flex items-center gap-2"
             >
-              <div className="px-3 py-1.5 bg-orange-50 rounded-lg text-[10px] font-black text-orange-700 uppercase tracking-tight">
+              <div className="px-3 py-1.5 bg-violet-50 rounded-lg text-[10px] font-black text-violet-700 uppercase tracking-tight">
                 Referência Detectada: {bibleSuggest.query}
               </div>
               <div className="flex items-center gap-1">
                 <button
                   onClick={handleBibleInsert}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-orange-600 text-white rounded-lg text-[10px] font-bold hover:bg-orange-700 transition-all"
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-violet-600 text-white rounded-lg text-[10px] font-bold hover:bg-violet-700 transition-all"
                 >
                   <Zap size={12} />
                   Inserir Texto
@@ -524,13 +544,13 @@ export default function Editor({ content, onChange, onAiAction, title, onTitleCh
               onMouseEnter={() => {}} // Keep open when hovering the tooltip itself if needed
             >
               <div className="flex items-center justify-between mb-3">
-                <span className="text-[10px] font-black uppercase tracking-widest text-orange-400 bg-orange-400/10 px-2 py-0.5 rounded">
+                <span className="text-[10px] font-black uppercase tracking-widest text-violet-400 bg-violet-400/10 px-2 py-0.5 rounded">
                   {lexiconTooltip.term.language}
                 </span>
                 <span className="font-serif text-lg text-slate-300">{lexiconTooltip.term.original}</span>
               </div>
               
-              <h4 className="font-black text-sm mb-1">{lexiconTooltip.term.term}: <span className="text-orange-300 font-bold">{lexiconTooltip.term.meaning}</span></h4>
+              <h4 className="font-black text-sm mb-1">{lexiconTooltip.term.term}: <span className="text-violet-300 font-bold">{lexiconTooltip.term.meaning}</span></h4>
               <p className="text-[11px] text-slate-400 leading-relaxed mb-4">
                 {lexiconTooltip.term.explanation}
               </p>
@@ -542,7 +562,7 @@ export default function Editor({ content, onChange, onAiAction, title, onTitleCh
                     setLexiconTooltip(null);
                   }
                 }}
-                className="w-full py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-lg text-[10px] font-black uppercase tracking-tighter transition-all flex items-center justify-center gap-2"
+                className="w-full py-2 bg-violet-600 hover:bg-violet-700 text-white rounded-lg text-[10px] font-black uppercase tracking-tighter transition-all flex items-center justify-center gap-2"
               >
                 <Zap size={12} />
                 Inserir Significado
@@ -570,7 +590,7 @@ export default function Editor({ content, onChange, onAiAction, title, onTitleCh
           >
             <button
               onClick={() => onAiAction('expand', editor.state.doc.textBetween(editor.state.selection.from, editor.state.selection.to))}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 hover:bg-slate-800 rounded-lg text-[10px] font-bold transition-all text-orange-400"
+              className="flex items-center gap-1.5 px-2.5 py-1.5 hover:bg-slate-800 rounded-lg text-[10px] font-bold transition-all text-violet-400"
               title="Expandir com IA"
             >
               <Sparkles size={12} />

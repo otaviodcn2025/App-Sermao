@@ -89,14 +89,14 @@ export default function Auth() {
         className="max-w-md w-full bg-white rounded-3xl shadow-xl shadow-slate-200 border border-slate-100 overflow-hidden"
       >
         <div className="p-8 pb-4 text-center">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-orange-600 rounded-2xl mb-6 shadow-lg shadow-orange-100">
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-violet-600 rounded-2xl mb-6 shadow-lg shadow-violet-100">
             <Sparkles size={32} className="text-white" />
           </div>
-          <h2 className="text-2xl font-bold text-slate-800 tracking-tight">
-            {isLogin ? 'Bem-vindo de volta' : 'Crie sua conta'}
+          <h2 className="text-2xl font-black text-slate-800 tracking-tight">
+            Pastoreai
           </h2>
           <p className="text-slate-500 text-sm mt-2">
-            {isLogin ? 'Entre para continuar seu sermão' : 'Comece a estruturar sua mensagem hoje'}
+            Como organizar sermões e pregar com clareza
           </p>
         </div>
 
@@ -111,47 +111,47 @@ export default function Auth() {
                 className="space-y-1.5"
               >
                 <label className="text-xs font-bold text-slate-700 uppercase tracking-wider ml-1">Nome</label>
-                <div className="relative group">
-                  <User size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-orange-500 transition-colors" />
+                <div className="relative group font-sans">
+                  <User size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-violet-500 transition-colors" />
                   <input
                     type="text"
                     required={!isLogin}
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     placeholder="Seu nome completo"
-                    className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all text-sm"
+                    className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-500 transition-all text-sm"
                   />
                 </div>
               </motion.div>
             )}
           </AnimatePresence>
 
-          <div className="space-y-1.5">
+          <div className="space-y-1.5 font-sans">
             <label className="text-xs font-bold text-slate-700 uppercase tracking-wider ml-1">E-mail</label>
             <div className="relative group">
-              <Mail size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-orange-500 transition-colors" />
+              <Mail size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-violet-500 transition-colors" />
               <input
                 type="email"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="seu@email.com"
-                className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all text-sm"
+                className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-500 transition-all text-sm"
               />
             </div>
           </div>
 
-          <div className="space-y-1.5">
+          <div className="space-y-1.5 font-sans">
             <label className="text-xs font-bold text-slate-700 uppercase tracking-wider ml-1">Senha</label>
             <div className="relative group">
-              <Lock size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-orange-500 transition-colors" />
+              <Lock size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-violet-500 transition-colors" />
               <input
                 type="password"
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
-                className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all text-sm"
+                className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-500 transition-all text-sm"
               />
             </div>
           </div>
@@ -170,7 +170,7 @@ export default function Auth() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-3.5 bg-orange-600 text-white rounded-xl font-bold text-sm hover:bg-orange-700 transition-all shadow-lg shadow-orange-100 active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2 group mt-2"
+            className="w-full py-3.5 bg-violet-600 text-white rounded-xl font-bold text-sm hover:bg-violet-700 transition-all shadow-lg shadow-violet-100 active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2 group mt-2"
           >
             {loading ? (
               <Loader2 size={20} className="animate-spin" />
@@ -184,11 +184,11 @@ export default function Auth() {
         </form>
 
         <div className="p-8 pt-0 text-center">
-          <p className="text-sm text-slate-500">
+          <p className="text-sm text-slate-500 font-sans">
             {isLogin ? 'Ainda não tem uma conta?' : 'Já possui uma conta?'}
             <button
               onClick={() => setIsLogin(!isLogin)}
-              className="ml-1 text-orange-600 font-bold hover:underline"
+              className="ml-1 text-violet-600 font-bold hover:underline"
             >
               {isLogin ? 'Cadastre-se' : 'Faça login'}
             </button>

@@ -74,3 +74,17 @@ export interface Resource {
   }[];
   createdAt: number;
 }
+
+export interface AgendaEntry {
+  id: string;
+  userId: string;
+  sermonId?: string | null;
+  date: string;
+  time?: string;
+  location: string;
+  serviceType: string;
+  status: 'agendado' | 'realizado' | 'cancelado';
+  notes?: string;
+  createdAt: number;
+}
+

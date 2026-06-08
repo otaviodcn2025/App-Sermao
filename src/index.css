@@ -49,7 +49,7 @@
     width: 8px;
   }
   .bible-scrollbar::-webkit-scrollbar-thumb {
-    @apply bg-orange-200 hover:bg-orange-300;
+    @apply bg-violet-200 hover:bg-violet-300;
   }
 }
 
@@ -75,7 +75,7 @@
 }
 
 .tiptap blockquote {
-  border-left: 4px solid #fed7aa;
+  border-left: 4px solid #c084fc;
   padding-left: 1rem;
   font-style: italic;
   color: #4b5563;
@@ -95,7 +95,7 @@
 }
 
 .prose blockquote {
-  @apply border-l-4 border-orange-300 pl-6 italic text-slate-600 bg-orange-50/50 py-4 rounded-r-xl mb-6 shadow-sm;
+  @apply border-l-4 border-violet-300 pl-6 italic text-slate-600 bg-violet-50/20 py-4 rounded-r-xl mb-6 shadow-sm;
 }
 
 .prose ul, .prose ol {
@@ -124,7 +124,7 @@
 }
 
 .prose .selectedCell:after {
-  @apply bg-orange-100/50 absolute content-[''] inset-0 pointer-events-none;
+  @apply bg-violet-100/50 absolute content-[''] inset-0 pointer-events-none;
 }
 
 /* Task lists */
@@ -145,17 +145,17 @@
 }
 
 .ai-suggestion {
-  @apply bg-slate-50 border border-orange-100 p-6 rounded-xl relative mt-8 mb-8;
+  @apply bg-slate-50 border border-violet-100 p-6 rounded-xl relative mt-8 mb-8;
 }
 
 .ai-suggestion::before {
   content: 'IA';
-  @apply absolute -top-3 left-6 bg-orange-600 text-white text-[10px] font-bold px-2 py-1 rounded-md uppercase tracking-wider shadow-sm;
+  @apply absolute -top-3 left-6 bg-violet-600 text-white text-[10px] font-bold px-2 py-1 rounded-md uppercase tracking-wider shadow-sm;
 }
 
 /* Custom Bible Scripture Styling */
 .bible-scripture {
-  @apply !border-l-4 !border-orange-500 !pl-4 !my-6 !bg-orange-50/30 !p-4 !rounded-r-lg transition-all hover:bg-orange-50/50;
+  @apply !border-l-4 !border-violet-500 !pl-4 !my-6 !bg-violet-50/30 !p-4 !rounded-r-lg transition-all hover:bg-violet-50/50;
 }
 
 .bible-scripture p:first-child {
@@ -164,7 +164,8 @@
 }
 
 .bible-scripture p:last-child {
-  @apply !text-right !text-[10px] md:!text-xs !font-black !text-orange-600 !mt-2 !tracking-widest !uppercase;
+  @apply !text-right !text-[10px] md:!text-xs !font-black !text-violet-600 !mt-2 !tracking-widest !uppercase;
   margin-top: 0.5rem !important;
 }
+
 

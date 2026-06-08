@@ -22,13 +22,17 @@ import {
   List,
   Book,
   Download,
-  RefreshCcw
+  RefreshCcw,
+  Layers,
+  Calendar
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import Editor from './components/Editor';
 import BibleSearch from './components/BibleSearch';
 import Auth from './components/Auth';
-import { Sermon, UserProfile, Resource, Series, Slide } from './types';
+import PreachingSchedule from './components/PreachingSchedule';
+import SeriesPanel from './components/SeriesPanel';
+import { Sermon, UserProfile, Resource, Series, Slide, AgendaEntry } from './types';
 import { cn, formatDate, parseSlides, withTimeout } from './lib/utils';
 import { 
   generateSermonOutline, 
@@ -87,9 +91,10 @@ export default function App() {
   const [aiActionType, setAiActionType] = useState<string | null>(null);
   const [isAiModalOpen, setIsAiModalOpen] = useState(false);
   const [sharedSermonData, setSharedSermonData] = useState<Sermon | null>(null);
-  const [mobileTab, setMobileTab] = useState<'list' | 'editor' | 'bible' | 'library'>('editor');
-  const [currentView, setCurrentView] = useState<'editor' | 'library'>('editor');
+  const [mobileTab, setMobileTab] = useState<'list' | 'editor' | 'bible' | 'library' | 'series' | 'agenda'>('editor');
+  const [currentView, setCurrentView] = useState<'editor' | 'library' | 'series' | 'agenda'>('editor');
   const [resources, setResources] = useState<Resource[]>([]);
+  const [agenda, setAgenda] = useState<AgendaEntry[]>([]);
   const [searchResults, setSearchResults] = useState<string[] | null>(null);
   const [isSearching, setIsSearching] = useState(false);
   const [isSlideGeneratorOpen, setIsSlideGeneratorOpen] = useState(false);
@@ -311,6 +316,30 @@ export default function App() {
     return () => unsubscribe();
   }, [user]);
 
+  // Sync Agenda from Firestore
+  useEffect(() => {
+    if (!user || !db) return;
+
+    const path = 'agenda';
+    const q = query(
+      collection(db, path), 
+      where('userId', '==', user.uid),
+      orderBy('date', 'asc')
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const agendaList: AgendaEntry[] = snapshot.docs.map(doc => ({
+        ...doc.data(),
+        id: doc.id
+      } as AgendaEntry));
+      setAgenda(agendaList);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, path);
+    });
+
+    return () => unsubscribe();
+  }, [user]);
+
   // Keep track of last selected sermon per user
   useEffect(() => {
     if (user && currentSermonId) {
@@ -386,6 +415,54 @@ export default function App() {
       return newDoc.id;
     } catch (err) {
       handleFirestoreError(err, OperationType.CREATE, 'series');
+    }
+  };
+
+  const deleteSeriesWithGradients = async (id: string) => {
+    if (!user || !db) return;
+    const path = `series/${id}`;
+    try {
+      await deleteDoc(doc(db, 'series', id));
+    } catch (err) {
+      handleFirestoreError(err, OperationType.DELETE, path);
+    }
+  };
+
+  const createAgendaEntry = async (entry: Omit<AgendaEntry, 'id' | 'userId' | 'createdAt'>) => {
+    if (!user || !db) return;
+    const agendaRef = collection(db, 'agenda');
+    const newDoc = doc(agendaRef);
+    try {
+      const newEntry: AgendaEntry = {
+        ...entry,
+        id: newDoc.id,
+        userId: user.uid,
+        createdAt: Date.now()
+      };
+      await setDoc(newDoc, newEntry);
+    } catch (err) {
+      handleFirestoreError(err, OperationType.CREATE, 'agenda');
+    }
+  };
+
+  const updateAgendaEntry = async (id: string, updates: Partial<AgendaEntry>) => {
+    if (!user || !db) return;
+    const path = `agenda/${id}`;
+    try {
+      const entryRef = doc(db, 'agenda', id);
+      await updateDoc(entryRef, updates);
+    } catch (err) {
+      handleFirestoreError(err, OperationType.UPDATE, path);
+    }
+  };
+
+  const deleteAgendaEntry = async (id: string) => {
+    if (!user || !db) return;
+    const path = `agenda/${id}`;
+    try {
+      await deleteDoc(doc(db, 'agenda', id));
+    } catch (err) {
+      handleFirestoreError(err, OperationType.DELETE, path);
     }
   };
 
@@ -792,11 +869,11 @@ export default function App() {
         )}
       >
         <div className="p-6 border-b border-slate-100 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-orange-600 rounded-lg flex items-center justify-center">
+          <div className="flex items-center gap-2 font-display">
+            <div className="w-8 h-8 bg-violet-600 rounded-lg flex items-center justify-center">
               <Sparkles size={18} className="text-white" />
             </div>
-            <h1 className="font-bold text-slate-800 tracking-tight">ConectaSermon</h1>
+            <h1 className="font-extrabold text-slate-800 tracking-tight">Pastoreai</h1>
           </div>
           <button 
             onClick={() => setMobileTab('editor')}
@@ -808,18 +885,18 @@ export default function App() {
 
         {/* User Profile Summary */}
         <div className="px-4 py-3 mx-2 mt-2 bg-white rounded-xl flex items-center gap-3 border border-slate-100 shadow-sm">
-          <div className="w-9 h-9 bg-orange-100 rounded-lg flex items-center justify-center text-orange-700 relative">
+          <div className="w-9 h-9 bg-violet-100 rounded-lg flex items-center justify-center text-violet-700 relative">
             <UserIcon size={18} />
             {userProfile?.approved && (
               <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 border-2 border-white rounded-full" />
             )}
           </div>
-          <div className="flex-1 min-w-0">
+          <div className="flex-1 min-w-0 font-sans">
             <p className="text-sm font-bold text-slate-800 truncate">{userProfile?.name || user.displayName || 'Usuário'}</p>
             <div className="flex items-center gap-1">
               <p className="text-[10px] text-slate-500 truncate">{user.email}</p>
               {userProfile?.role === 'admin' && (
-                <Shield size={10} className="text-orange-500" />
+                <Shield size={10} className="text-violet-500" />
               )}
             </div>
           </div>
@@ -827,7 +904,7 @@ export default function App() {
             {userProfile?.role === 'admin' && (
               <button 
                 onClick={() => setIsAdminPanelOpen(true)}
-                className="p-1.5 hover:bg-slate-100 rounded-md text-orange-400 hover:text-orange-600 transition-all"
+                className="p-1.5 hover:bg-slate-100 rounded-md text-violet-400 hover:text-violet-600 transition-all"
                 title="Painel ADM"
               >
                 <Users size={14} />
@@ -861,8 +938,8 @@ export default function App() {
         </div>
 
         <div className="px-4 mb-4">
-          <div className="relative group">
-            <Search className={cn("absolute left-3 top-1/2 -translate-y-1/2 transition-colors", isSearching ? "text-orange-500 animate-pulse" : "text-slate-400 group-focus-within:text-orange-500")} size={16} />
+          <div className="relative group font-sans">
+            <Search className={cn("absolute left-3 top-1/2 -translate-y-1/2 transition-colors", isSearching ? "text-violet-500 animate-pulse" : "text-slate-400 group-focus-within:text-violet-500")} size={16} />
             <input 
               type="text"
               placeholder="Busca Semântica (IA)..."
@@ -871,7 +948,7 @@ export default function App() {
                   handleSemanticSearch((e.target as HTMLInputElement).value);
                 }
               }}
-              className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-all placeholder:text-slate-400"
+              className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-violet-500 focus:border-violet-500 outline-none transition-all placeholder:text-slate-400"
             />
             {searchResults && (
               <button 
@@ -883,7 +960,7 @@ export default function App() {
             )}
           </div>
           {searchResults && (
-            <div className="mt-2 text-[10px] text-orange-600 font-bold bg-orange-50 px-2 py-1 rounded border border-orange-100 flex items-center justify-between">
+            <div className="mt-2 text-[10px] text-violet-600 font-bold bg-violet-50 px-2 py-1 rounded border border-violet-100 flex items-center justify-between font-sans">
               Filtro IA Ativo
               <span className="text-[8px] opacity-70">Encontrados: {searchResults.length}</span>
             </div>
@@ -898,12 +975,40 @@ export default function App() {
               if(window.innerWidth < 1024) setIsSidebarOpen(false);
             }}
             className={cn(
-              "w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-bold transition-all",
-              currentView === 'editor' ? "bg-orange-50 text-orange-600 shadow-sm" : "text-slate-500 hover:bg-slate-50"
+              "w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-bold transition-all font-sans",
+              currentView === 'editor' ? "bg-violet-50 text-violet-600 shadow-sm" : "text-slate-500 hover:bg-slate-50"
             )}
           >
             <FileText size={18} />
             Editor de Sermões
+          </button>
+          <button 
+            onClick={() => {
+              setCurrentView('series');
+              setMobileTab('series');
+              if(window.innerWidth < 1024) setIsSidebarOpen(false);
+            }}
+            className={cn(
+              "w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-bold transition-all font-sans",
+              currentView === 'series' ? "bg-violet-50 text-violet-600 shadow-sm" : "text-slate-500 hover:bg-slate-50"
+            )}
+          >
+            <Layers size={18} />
+            Séries
+          </button>
+          <button 
+            onClick={() => {
+              setCurrentView('agenda');
+              setMobileTab('agenda');
+              if(window.innerWidth < 1024) setIsSidebarOpen(false);
+            }}
+            className={cn(
+              "w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-bold transition-all font-sans",
+              currentView === 'agenda' ? "bg-violet-50 text-violet-600 shadow-sm" : "text-slate-500 hover:bg-slate-50"
+            )}
+          >
+            <Calendar size={18} />
+            Agenda de Pregações
           </button>
           <button 
             onClick={() => {
@@ -912,12 +1017,12 @@ export default function App() {
               if(window.innerWidth < 1024) setIsSidebarOpen(false);
             }}
             className={cn(
-              "w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-bold transition-all",
-              currentView === 'library' ? "bg-orange-50 text-orange-600 shadow-sm" : "text-slate-500 hover:bg-slate-50"
+              "w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-bold transition-all font-sans",
+              currentView === 'library' ? "bg-violet-50 text-violet-600 shadow-sm" : "text-slate-500 hover:bg-slate-50"
             )}
           >
             <Book size={18} />
-            Minha Biblioteca
+            Biblioteca Teológica
           </button>
         </div>
 
@@ -1073,9 +1178,9 @@ export default function App() {
           </div>
         </header>
 
-        {/* Editor or Library Body */}
-        <div className="flex-1 overflow-y-auto overflow-x-hidden px-4 md:px-12 py-6">
-          <div className="max-w-4xl mx-auto pb-24 md:pb-12 h-full">
+        {/* Editor, Series, Agenda or Library Body */}
+        <div className="flex-1 overflow-y-auto overflow-x-hidden px-4 md:px-12 py-6 bg-slate-50">
+          <div className="max-w-[1200px] mx-auto pb-24 md:pb-12 h-full">
             {currentView === 'library' ? (
               <Library 
                 resources={resources}
@@ -1083,6 +1188,34 @@ export default function App() {
                 onDelete={handleResourceDelete}
                 userApproved={userProfile?.approved || false}
                 searchResults={searchResults}
+              />
+            ) : currentView === 'series' ? (
+              <SeriesPanel
+                sermons={sermons}
+                series={series}
+                onCreateSeries={async (data) => {
+                  await createNewSeries(data.title, data.description || '');
+                }}
+                onDeleteSeries={deleteSeriesWithGradients}
+                onSelectSermon={(sId) => {
+                  setCurrentSermonId(sId);
+                  setCurrentView('editor');
+                }}
+                onNewSermonWithSeries={(serId) => {
+                  createNewSermon(serId);
+                }}
+              />
+            ) : currentView === 'agenda' ? (
+              <PreachingSchedule
+                sermons={sermons}
+                agenda={agenda}
+                onCreateEntry={createAgendaEntry}
+                onUpdateEntry={updateAgendaEntry}
+                onDeleteEntry={deleteAgendaEntry}
+                onSelectSermon={(sId) => {
+                  setCurrentSermonId(sId);
+                  setCurrentView('editor');
+                }}
               />
             ) : currentSermon ? (
               <Editor 
@@ -1096,7 +1229,7 @@ export default function App() {
               />
             ) : currentSermonId ? (
               <div className="h-[70vh] flex items-center justify-center">
-                <Loader2 className="animate-spin text-orange-600" size={32} />
+                <Loader2 className="animate-spin text-violet-600" size={32} />
               </div>
             ) : (
               <div className="h-[70vh] flex flex-col items-center justify-center text-slate-400 space-y-4">
