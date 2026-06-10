@@ -43,7 +43,9 @@ import {
   Copy,
   Check,
   ChevronDown,
+  ChevronRight,
   FileDown,
+  FileText,
   Lightbulb,
   Zap,
   BookOpen,
@@ -290,28 +292,64 @@ export default function Editor({ content, onChange, onAiAction, title, onTitleCh
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleShare = async () => {
-    const shareUrl = sermonId 
-      ? `${window.location.origin}${window.location.pathname}?sermon=${sermonId}`
-      : window.location.href;
+  const handleShare = () => {
+    setShowShareMenu(true);
+  };
 
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: `Sermão: ${title}`,
-          text: `Confira meu esboço de sermão: ${title}`,
-          url: shareUrl,
-        });
-      } catch (err) {
-        console.log('Error sharing:', err);
+  const convertToWhatsAppMarkdown = (htmlContent: string): string => {
+    if (!htmlContent) return '';
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = htmlContent;
+
+    let markdown = '';
+
+    const walk = (node: Node) => {
+      if (node.nodeType === Node.TEXT_NODE) {
+        markdown += node.textContent;
+      } else if (node.nodeType === Node.ELEMENT_NODE) {
+        const element = node as HTMLElement;
+        const tagName = element.tagName.toLowerCase();
+
+        // Start tags
+        if (tagName === 'h1' || tagName === 'h2' || tagName === 'h3') {
+          markdown += '\n\n*';
+        } else if (tagName === 'strong' || tagName === 'b') {
+          markdown += '*';
+        } else if (tagName === 'em' || tagName === 'i') {
+          markdown += '_';
+        } else if (tagName === 'blockquote') {
+          markdown += '\n> _';
+        } else if (tagName === 'li') {
+          markdown += '\n• ';
+        } else if (tagName === 'p') {
+          markdown += '\n';
+        } else if (tagName === 'br') {
+          markdown += '\n';
+        }
+
+        // Walk children
+        element.childNodes.forEach(walk);
+
+        // End tags
+        if (tagName === 'h1' || tagName === 'h2' || tagName === 'h3') {
+          markdown += '*\n';
+        } else if (tagName === 'strong' || tagName === 'b') {
+          markdown += '*';
+        } else if (tagName === 'em' || tagName === 'i') {
+          markdown += '_';
+        } else if (tagName === 'blockquote') {
+          markdown += '_\n';
+        } else if (tagName === 'p') {
+          markdown += '\n';
+        }
       }
-    } else {
-      // Fallback: Copy link
-      navigator.clipboard.writeText(shareUrl);
-      setLinkCopied(true);
-      setTimeout(() => setLinkCopied(false), 2000);
-      alert('Link do sermão copiado para a área de transferência!');
-    }
+    };
+
+    tempDiv.childNodes.forEach(walk);
+
+    return markdown
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
   };
 
   return (
@@ -924,6 +962,155 @@ export default function Editor({ content, onChange, onAiAction, title, onTitleCh
           </motion.div>
         </BubbleMenu>
       )}
+
+      {/* Share and Download Dialog */}
+      <AnimatePresence>
+        {showShareMenu && (
+          <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowShareMenu(false)}
+              className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
+            />
+            
+            {/* Modal Content */}
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0, y: 10 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 10 }}
+              className="relative bg-white w-full max-w-md rounded-2xl shadow-2xl border border-slate-100 overflow-hidden z-10 p-6"
+            >
+              <div className="flex items-center justify-between mb-4 pb-2 border-b border-slate-100">
+                <div className="flex items-center gap-2">
+                  <Share2 size={18} className="text-violet-600" />
+                  <h3 className="font-bold text-slate-800 text-base">Compartilhar & Exportar</h3>
+                </div>
+                <button
+                  onClick={() => setShowShareMenu(false)}
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+
+              <p className="text-xs text-slate-500 mb-5 leading-relaxed">
+                Escolha como deseja compartilhar ou salvar o esboço do seu sermão <strong>"{title || 'Sem título'}"</strong>:
+              </p>
+
+              <div className="space-y-3">
+                {/* WhatsApp Direct Option */}
+                <button
+                  onClick={() => {
+                    const shareUrl = sermonId 
+                      ? `${window.location.origin}${window.location.pathname}?sermon=${sermonId}`
+                      : window.location.href;
+                    const cleanText = editor ? editor.getText() : '';
+                    const excerpt = cleanText.length > 250 ? cleanText.substring(0, 250) + '...' : cleanText;
+                    const whatsappText = `*📚 Esboço de Sermão:* _${title || 'Sem título'}_\n\n${excerpt}\n\n👉 Acesse o sermão completo e baixe em PDF aqui:\n${shareUrl}`;
+                    const whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(whatsappText)}`;
+                    window.open(whatsappUrl, '_blank');
+                    setShowShareMenu(false);
+                  }}
+                  className="w-full flex items-center justify-between p-3.5 bg-emerald-50 hover:bg-emerald-100 border border-emerald-100 rounded-xl transition-all group text-left cursor-pointer"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-emerald-500 text-white rounded-lg group-hover:scale-105 transition-transform flex items-center justify-center">
+                      <MessageSquare size={18} />
+                    </div>
+                    <div>
+                      <span className="block text-xs font-black text-emerald-800 uppercase tracking-wide">WhatsApp</span>
+                      <span className="block text-[11px] text-emerald-600 mt-0.5">Enviar resumo e link para ler e baixar em PDF</span>
+                    </div>
+                  </div>
+                  <ChevronRight size={16} className="text-emerald-400 group-hover:translate-x-1 transition-transform" />
+                </button>
+
+                {/* Copy Formatted for WhatsApp Option */}
+                <button
+                  onClick={() => {
+                    const formatted = convertToWhatsAppMarkdown(editor ? editor.getHTML() : '');
+                    navigator.clipboard.writeText(`*📚 ESBOÇO DE SERMÃO: ${title.toUpperCase()}*\n\n${formatted}`);
+                    alert('Texto formatado para WhatsApp copiado com sucesso! Agora basta colar no chat.');
+                    setShowShareMenu(false);
+                  }}
+                  className="w-full flex items-center justify-between p-3.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl transition-all group text-left cursor-pointer"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-slate-800 text-white rounded-lg group-hover:scale-105 transition-transform flex items-center justify-center">
+                      <Copy size={18} />
+                    </div>
+                    <div>
+                      <span className="block text-xs font-black text-slate-800 uppercase tracking-wide">Copiar Texto formatado</span>
+                      <span className="block text-[11px] text-slate-600 mt-0.5">Converter formatação para mensagens do WhatsApp</span>
+                    </div>
+                  </div>
+                  <ChevronRight size={16} className="text-slate-400 group-hover:translate-x-1 transition-transform" />
+                </button>
+
+                {/* Download PDF Option */}
+                <button
+                  onClick={() => {
+                    exportToPdf(title, editor ? editor.getHTML() : '');
+                    setShowShareMenu(false);
+                  }}
+                  className="w-full flex items-center justify-between p-3.5 bg-violet-50 hover:bg-violet-100 border border-violet-100 rounded-xl transition-all group text-left cursor-pointer"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-violet-600 text-white rounded-lg group-hover:scale-105 transition-transform flex items-center justify-center">
+                      <FileDown size={18} />
+                    </div>
+                    <div>
+                      <span className="block text-xs font-black text-violet-800 uppercase tracking-wide">Baixar em PDF</span>
+                      <span className="block text-[11px] text-violet-600 mt-0.5">Gerar documento PDF profissional para impressão</span>
+                    </div>
+                  </div>
+                  <ChevronRight size={16} className="text-violet-400 group-hover:translate-x-1 transition-transform" />
+                </button>
+
+                {/* Download Word Document Option */}
+                <button
+                  onClick={() => {
+                    exportToWord(title, editor ? editor.getHTML() : '');
+                    setShowShareMenu(false);
+                  }}
+                  className="w-full flex items-center justify-between p-3.5 bg-blue-50 hover:bg-blue-100 border border-blue-100 rounded-xl transition-all group text-left cursor-pointer"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-blue-600 text-white rounded-lg group-hover:scale-105 transition-transform flex items-center justify-center">
+                      <FileText size={18} />
+                    </div>
+                    <div>
+                      <span className="block text-xs font-black text-blue-800 uppercase tracking-wide">Baixar em Word (.docx)</span>
+                      <span className="block text-[11px] text-blue-600 mt-0.5">Documento de texto para edição avançada</span>
+                    </div>
+                  </div>
+                  <ChevronRight size={16} className="text-blue-400 group-hover:translate-x-1 transition-transform" />
+                </button>
+              </div>
+
+              <div className="mt-5 pt-3 border-t border-slate-100 flex items-center justify-between text-[10px] text-slate-400 font-bold">
+                <span>Esboço Pastoral Online</span>
+                <button 
+                  type="button"
+                  onClick={() => {
+                    const shareUrl = sermonId 
+                      ? `${window.location.origin}${window.location.pathname}?sermon=${sermonId}`
+                      : window.location.href;
+                    navigator.clipboard.writeText(shareUrl);
+                    alert('Link do sermão copiado!');
+                  }}
+                  className="text-violet-600 hover:underline"
+                >
+                  Copiar Link do Leitor
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
