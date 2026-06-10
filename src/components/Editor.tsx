@@ -55,7 +55,8 @@ import {
   Languages as GreekIcon,
   Presentation,
   X,
-  Loader2
+  Loader2,
+  Palette
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
@@ -80,6 +81,17 @@ export default function Editor({ content, onChange, onAiAction, title, onTitleCh
   const [lexiconTooltip, setLexiconTooltip] = useState<{ term: LexiconTerm, pos: { left: number, top: number } } | null>(null);
   const [bibleSuggest, setBibleSuggest] = useState<{ query: string, range: { from: number, to: number } } | null>(null);
   const [isLexiconLoading, setIsLexiconLoading] = useState(false);
+  const [showColorPicker, setShowColorPicker] = useState(false);
+
+  const PREACHING_COLORS = [
+    { name: 'Padrão (Preto)', value: '#0f172a' },
+    { name: 'Vermelho (Alerta/Urgente)', value: '#ef4444' },
+    { name: 'Laranja (Ênfase)', value: '#f97316' },
+    { name: 'Verde (Aplicação Prática)', value: '#10b981' },
+    { name: 'Azul (Passagens/Estudos)', value: '#3b82f6' },
+    { name: 'Violeta (Esboço/Séries)', value: '#8b5cf6' },
+    { name: 'Rosa (Ilustração/Exemplo)', value: '#ec4899' },
+  ];
 
   const [isSaving, setIsSaving] = useState(false);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -364,6 +376,68 @@ export default function Editor({ content, onChange, onAiAction, title, onTitleCh
             >
               <UnderlineIcon size={16} />
             </button>
+          </div>
+
+          <div className="relative flex items-center px-1 border-r border-slate-200">
+            <button
+              onClick={() => setShowColorPicker(!showColorPicker)}
+              className={cn(
+                "p-1.5 rounded hover:bg-slate-200 transition-colors flex items-center gap-1",
+                showColorPicker && "bg-slate-200"
+              )}
+              title="Cor do Texto"
+            >
+              <Palette size={16} style={{ color: editor.getAttributes('textStyle').color || '#0f172a' }} />
+              <ChevronDown size={10} className="text-slate-400" />
+            </button>
+            {showColorPicker && (
+              <>
+                <div 
+                  className="fixed inset-0 z-30" 
+                  onClick={() => setShowColorPicker(false)} 
+                />
+                <div className="absolute top-full left-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-xl p-2.5 z-40 grid grid-cols-4 gap-1.5 w-36">
+                  {PREACHING_COLORS.map((color) => {
+                    const isActive = editor.isActive('textStyle', { color: color.value });
+                    return (
+                      <button
+                        key={color.value}
+                        onClick={() => {
+                          if (color.value === '#0f172a') {
+                            // @ts-ignore
+                            editor.commands.unsetColor();
+                          } else {
+                            // @ts-ignore
+                            editor.commands.setColor(color.value);
+                          }
+                          setShowColorPicker(false);
+                          editor.commands.focus();
+                        }}
+                        className={cn(
+                          "w-6 h-6 rounded-full border border-slate-200 flex items-center justify-center hover:scale-110 active:scale-95 transition-transform shrink-0",
+                          isActive && "ring-2 ring-violet-500 ring-offset-1"
+                        )}
+                        style={{ backgroundColor: color.value }}
+                        title={color.name}
+                      >
+                        {isActive && <Check size={10} className="text-white mix-blend-difference" />}
+                      </button>
+                    );
+                  })}
+                  <button
+                    onClick={() => {
+                      // @ts-ignore
+                      editor.commands.unsetColor();
+                      setShowColorPicker(false);
+                      editor.commands.focus();
+                    }}
+                    className="col-span-4 text-[10px] font-bold text-slate-500 hover:text-slate-700 py-1 hover:bg-slate-100 rounded text-center transition-colors mt-1"
+                  >
+                    Remover Cor
+                  </button>
+                </div>
+              </>
+            )}
           </div>
 
           <div className="flex items-center gap-0.5 px-1 border-r border-slate-200">
