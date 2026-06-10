@@ -433,3 +433,56 @@ export async function improveSlide(slide: { title: string, content: string }, ty
     return slide;
   }
 }
+
+export async function generatePGMOutline(sermonTitle: string, sermonContent: string) {
+  try {
+    const ai = getAIClient();
+    if (!ai) throw new Error("IA não disponível. Verifique se a Chave de API foi configurada corretamente.");
+
+    const prompt = `Você é um mentor especialista em Pequenos Grupos Multiplicadores (PGM) e na visão de Igreja Multiplicadora (https://igrejamultiplicadora.org.br/), que fomenta a multiplicação através de relacionamentos discipuladores da Convenção Batista Brasileira.
+
+Com base no sermão abaixo intitulado "${sermonTitle}", elabore um Roteiro de Reunião para Pequeno Grupo Multiplicador (PGM) seguindo estritamente os 4 passos/momentos oficiais da Igreja Multiplicadora:
+
+1. COMPARTILHAR (Acolhida, comunhão e perguntas de quebra-gelo conectadas ao tema do sermão)
+   - Dinâmica curta de acolhida/quebra-gelo (interativa e leve).
+   - 1 ou 2 perguntas de check-in pessoal para as pessoas contarem como foi a semana em relação ao tema.
+
+2. ADORAR (Louvor, leitura bíblica e oração devocional)
+   - Sugestão de 2 cânticos/louvores conhecidos que se conectem com a mensagem.
+   - Uma breve leitura bíblica devocional com oração focada em gratidão e adoração ao Senhor.
+
+3. EDIFICAR (Leitura do texto bíblico principal e perguntas de aplicação prática baseadas na mensagem/sermão)
+   - Leitura da passagem bíblica central abordada no sermão.
+   - Elaborar de 3 a 4 perguntas PODEROSAS, de aplicação pessoal e transformação prática para o grupo discutir. Evite perguntas com respostas teóricas do tipo "sim/não". Foque em: "como podemos viver isso nesta semana?", "quais os desafios para praticarmos essa verdade em nossa família/trabalho?".
+   - Uma breve exegese explicatória simplificada do líder como auxílio.
+
+4. MULTIPLICAR (Oração mútua, evangelização discipuladora pelos amigos não convertidos, compaixão e graça, e visão de multiplicação)
+   - Momento de planejar uma ação simples de "Compaixão e Graça" ou serviço na comunidade.
+   - Oração pelos amigos que estão sendo discipulados ou evangelizados (Frente de Honra / Os Meus 5 Amigos para orar).
+   - Oração pela multiplicação do PGM, formação de novos líderes de PGM e planejamento prático do grupo.
+
+SERMÃO DE REFERÊNCIA:
+---
+${sermonContent}
+---
+
+Instruções Adicionais de Formatação:
+- Retorne um texto em Markdown estruturado, bonito e convidativo para o líder de PGM.
+- Use emojis adequados para cada momento para deixar as seções visualmente atraentes e ritmadas.
+- Garanta que as seções sejam muito claras, com títulos bem demarcados.`;
+
+    const response = await ai.models.generateContent({
+      model: DEFAULT_MODEL,
+      contents: prompt,
+      config: {
+        systemInstruction: SYSTEM_INSTRUCTION,
+      }
+    });
+
+    return response.text || "Não foi possível gerar o roteiro de PGM.";
+  } catch (error: any) {
+    console.error("Gemini Error (generatePGMOutline):", error);
+    throw error;
+  }
+}
+

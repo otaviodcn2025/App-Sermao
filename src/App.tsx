@@ -33,7 +33,7 @@ import Auth from './components/Auth';
 import PreachingSchedule from './components/PreachingSchedule';
 import SeriesPanel from './components/SeriesPanel';
 import { Sermon, UserProfile, Resource, Series, Slide, AgendaEntry } from './types';
-import { cn, formatDate, parseSlides, withTimeout } from './lib/utils';
+import { cn, formatDate, parseSlides, withTimeout, parseMarkdownToHtml } from './lib/utils';
 import { 
   generateSermonOutline, 
   analyzeVerse, 
@@ -46,6 +46,7 @@ import {
   analyzeThematicConnections,
   semanticSearch,
   improveSlide,
+  generatePGMOutline,
   DEFAULT_MODEL,
   getAIClient
 } from './lib/gemini';
@@ -556,6 +557,8 @@ export default function App() {
           .filter(s => s.id !== currentSermonId)
           .map(s => ({ id: s.id, title: s.title, content: s.content.substring(0, 500) }));
         result = await analyzeThematicConnections(currentSermon?.content || '', otherSermonsContext) || 'Nenhuma conexão significativa encontrada.';
+      } else if (action === 'pgm') {
+        result = await generatePGMOutline(currentSermon?.title || 'Sermão', currentSermon?.content || '');
       }
       setAiResponse(result);
     } catch (err) {
@@ -1289,7 +1292,7 @@ export default function App() {
             >
               <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
                 <div className="flex items-center gap-2">
-                  <Sparkles size={18} className="text-orange-500" />
+                  <Sparkles size={18} className="text-violet-600" />
                   <span className="text-sm font-bold text-slate-800">Sugestão da IA</span>
                 </div>
                 <button 
@@ -1303,7 +1306,7 @@ export default function App() {
                 </button>
               </div>
               <div className="flex-1 overflow-y-auto p-6 prose prose-sm max-w-none prose-slate">
-                <div dangerouslySetInnerHTML={{ __html: aiResponse.replace(/\n/g, '<br/>') }} />
+                <div dangerouslySetInnerHTML={{ __html: parseMarkdownToHtml(aiResponse) }} />
               </div>
               <div className="p-4 border-t border-slate-100 bg-slate-50 flex justify-between gap-4">
                  {(aiActionType === 'slides' || (aiResponse && aiResponse.includes('Slide 1'))) && (
@@ -1324,12 +1327,12 @@ export default function App() {
                  )}
                  <button 
                   onClick={() => {
-                    const newContent = (currentSermon?.content || '') + `<hr/><div class="ai-suggestion">${aiResponse.replace(/\n/g, '<br/>')}</div>`;
+                    const newContent = (currentSermon?.content || '') + `<hr/><div class="ai-suggestion">${parseMarkdownToHtml(aiResponse)}</div>`;
                     updateSermon({ content: newContent });
                     setAiResponse(null);
                     setAiActionType(null);
                   }}
-                  className="bg-orange-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-orange-700 transition-colors shadow-sm ml-auto"
+                  className="bg-violet-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-violet-700 transition-colors shadow-sm ml-auto"
                 >
                   Adicionar ao Sermão
                 </button>

@@ -478,14 +478,24 @@ export default function Editor({ content, onChange, onAiAction, title, onTitleCh
               placeholder="Título do Sermão"
               className="flex-1 text-xl sm:text-2xl lg:text-4xl font-black text-slate-900 border-none focus:ring-0 placeholder:text-slate-200 bg-transparent min-w-0"
             />
-            <button
-              onClick={() => onAiAction('titles', '')}
-              className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1 sm:py-1.5 bg-violet-100 text-violet-700 rounded-lg hover:bg-violet-200 transition-all text-[9px] sm:text-[10px] font-black uppercase tracking-wider shrink-0 shadow-sm"
-              title="Gerar Sugestões de Título"
-            >
-              <Wand2 size={14} />
-              <span className="hidden sm:inline">IA Títulos</span>
-            </button>
+            <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+              <button
+                onClick={() => onAiAction('titles', '')}
+                className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1 sm:py-1.5 bg-violet-100 text-violet-700 rounded-lg hover:bg-violet-200 transition-all text-[9px] sm:text-[10px] font-black uppercase tracking-wider shadow-sm"
+                title="Gerar Sugestões de Título"
+              >
+                <Wand2 size={14} />
+                <span className="hidden sm:inline">IA Títulos</span>
+              </button>
+              <button
+                onClick={() => onAiAction('pgm', '')}
+                className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1 sm:py-1.5 bg-emerald-100 text-emerald-700 rounded-lg hover:bg-emerald-200 transition-all text-[9px] sm:text-[10px] font-black uppercase tracking-wider shadow-sm"
+                title="Gerar Roteiro de PGM (Igreja Multiplicadora)"
+              >
+                <MessageSquare size={14} />
+                <span className="hidden sm:inline">Roteiro PGM</span>
+              </button>
+            </div>
           </div>
           <div className="w-16 sm:w-20 h-1 sm:h-1.5 bg-violet-600 rounded-full mb-6 sm:mb-8" />
         </div>

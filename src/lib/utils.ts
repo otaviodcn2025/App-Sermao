@@ -75,3 +75,35 @@ export function parseSlides(text: string) {
   
   return slides;
 }
+
+export function parseMarkdownToHtml(markdown: string): string {
+  if (!markdown) return "";
+  
+  // Simple regex conversion
+  let html = markdown;
+  
+  // Bold: **text**
+  html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+  
+  // Headers (h1, h2, h3)
+  html = html.replace(/^### (.*?)$/gm, '<h3 class="text-sm font-black text-slate-800 mt-4 mb-2 flex items-center gap-1.5">$1</h3>');
+  html = html.replace(/^## (.*?)$/gm, '<h2 class="text-base font-black text-slate-800 mt-5 mb-3 border-b border-slate-100 pb-1">$1</h2>');
+  html = html.replace(/^# (.*?)$/gm, '<h1 class="text-xl font-black text-slate-900 mt-6 mb-4">$1</h1>');
+  
+  // List items starting with '-' or '*'
+  html = html.replace(/^\s*[-*]\s+(.*?)$/gm, '<li class="ml-4 list-disc pl-1 text-slate-600 my-1">$1</li>');
+  
+  // Blockquotes starting with '>'
+  html = html.replace(/^\s*>\s+(.*?)$/gm, '<blockquote class="border-l-4 border-violet-500 pl-4 py-1 my-3 bg-violet-50/50 rounded-r text-slate-700 italic">$1</blockquote>');
+  
+  // Line breaks
+  html = html.replace(/\n/g, '<br/>');
+  
+  // Clean contiguous duplicates or breaks from list and headers
+  html = html.replace(/(<br\/>)+<li/g, '<li');
+  html = html.replace(/<\/li>(<br\/>)+/g, '</li>');
+  html = html.replace(/(<br\/>)+<h/g, '<h');
+
+  return html;
+}
+
