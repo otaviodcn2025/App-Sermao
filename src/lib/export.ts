@@ -4,7 +4,7 @@
 /**
  * Super simple HTML to DOCX converter for the sermon editor.
  */
-export async function exportToWord(title: string, htmlContent: string) {
+export async function exportToWord(title: string, htmlContent: string, authorName?: string) {
   const { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType } = await import('docx');
   const { saveAs } = await import('file-saver');
 
@@ -23,10 +23,24 @@ export async function exportToWord(title: string, htmlContent: string) {
       heading: HeadingLevel.TITLE,
       alignment: AlignmentType.CENTER,
       spacing: {
-        after: 400,
+        after: authorName ? 100 : 400,
       },
     })
   );
+
+  // Add Author Subtitle if provided
+  if (authorName) {
+    sections.push(
+      new Paragraph({
+        text: `Autor: ${authorName}`,
+        heading: HeadingLevel.HEADING_3,
+        alignment: AlignmentType.CENTER,
+        spacing: {
+          after: 400,
+        },
+      })
+    );
+  }
 
   bodyNodes.forEach((node) => {
     if (node.nodeType === Node.ELEMENT_NODE) {
@@ -104,14 +118,15 @@ export async function exportToWord(title: string, htmlContent: string) {
 /**
  * Exports HTML content to PDF using html2pdf.js
  */
-export async function exportToPdf(title: string, htmlContent: string) {
+export async function exportToPdf(title: string, htmlContent: string, authorName?: string) {
   const html2pdfModule = await import('html2pdf.js');
   const html2pdf = html2pdfModule.default || (html2pdfModule as any);
 
   const element = document.createElement('div');
   element.innerHTML = `
     <div style="padding: 40px; font-family: sans-serif; line-height: 1.6; color: #1e293b;">
-      <h1 style="text-align: center; color: #0f172a; margin-bottom: 30px; font-size: 28px;">${title || 'Sermão'}</h1>
+      <h1 style="text-align: center; color: #0f172a; margin-bottom: ${authorName ? '10px' : '30px'}; font-size: 28px;">${title || 'Sermão'}</h1>
+      ${authorName ? `<p style="text-align: center; color: #64748b; font-size: 16px; font-style: italic; margin-top: 0; margin-bottom: 30px;">Autor: ${authorName}</p>` : ''}
       <div class="sermon-content">
         ${htmlContent}
       </div>

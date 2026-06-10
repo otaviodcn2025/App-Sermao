@@ -85,6 +85,12 @@ export default function Editor({ content, onChange, onAiAction, title, onTitleCh
   const [showColorPicker, setShowColorPicker] = useState(false);
   const [showHighlightPicker, setShowHighlightPicker] = useState(false);
   const [fontSizeScale, setFontSizeScale] = useState(100);
+  const [authorName, setAuthorName] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('pastor_author_name') || '';
+    }
+    return '';
+  });
 
   const PREACHING_COLORS = [
     { name: 'Padrão (Preto)', value: '#0f172a' },
@@ -995,9 +1001,27 @@ export default function Editor({ content, onChange, onAiAction, title, onTitleCh
                 </button>
               </div>
 
-              <p className="text-xs text-slate-500 mb-5 leading-relaxed">
+              <p className="text-xs text-slate-500 mb-4 leading-relaxed">
                 Escolha como deseja compartilhar ou salvar o esboço do seu sermão <strong>"{title || 'Sem título'}"</strong>:
               </p>
+
+              {/* Nome do Autor Input */}
+              <div className="mb-4 p-3.5 bg-slate-50 border border-slate-100 rounded-xl">
+                <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
+                  ✍️ Autor / Pregador:
+                </label>
+                <input
+                  type="text"
+                  value={authorName}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setAuthorName(val);
+                    localStorage.setItem('pastor_author_name', val);
+                  }}
+                  placeholder="Ex: Pr. Otávio Neto"
+                  className="w-full text-xs px-3 py-2 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500 text-slate-800 font-semibold"
+                />
+              </div>
 
               <div className="space-y-3">
                 {/* WhatsApp Direct Option */}
@@ -1008,7 +1032,8 @@ export default function Editor({ content, onChange, onAiAction, title, onTitleCh
                       : window.location.href;
                     const cleanText = editor ? editor.getText() : '';
                     const excerpt = cleanText.length > 250 ? cleanText.substring(0, 250) + '...' : cleanText;
-                    const whatsappText = `*📚 Esboço de Sermão:* _${title || 'Sem título'}_\n\n${excerpt}\n\n👉 Acesse o sermão completo e baixe em PDF aqui:\n${shareUrl}`;
+                    const authorSuffix = authorName.trim() ? `\n\n*Por:* _${authorName.trim()}_` : '';
+                    const whatsappText = `*📚 Esboço de Sermão:* _${title || 'Sem título'}_${authorSuffix}\n\n${excerpt}\n\n👉 Acesse o sermão completo e baixe em PDF aqui:\n${shareUrl}`;
                     const whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(whatsappText)}`;
                     window.open(whatsappUrl, '_blank');
                     setShowShareMenu(false);
@@ -1031,7 +1056,8 @@ export default function Editor({ content, onChange, onAiAction, title, onTitleCh
                 <button
                   onClick={() => {
                     const formatted = convertToWhatsAppMarkdown(editor ? editor.getHTML() : '');
-                    navigator.clipboard.writeText(`*📚 ESBOÇO DE SERMÃO: ${title.toUpperCase()}*\n\n${formatted}`);
+                    const authorSuffix = authorName.trim() ? `\n\n*Por:* _${authorName.trim()}_` : '';
+                    navigator.clipboard.writeText(`*📚 ESBOÇO DE SERMÃO: ${title.toUpperCase()}*${authorSuffix}\n\n${formatted}`);
                     alert('Texto formatado para WhatsApp copiado com sucesso! Agora basta colar no chat.');
                     setShowShareMenu(false);
                   }}
@@ -1052,7 +1078,7 @@ export default function Editor({ content, onChange, onAiAction, title, onTitleCh
                 {/* Download PDF Option */}
                 <button
                   onClick={() => {
-                    exportToPdf(title, editor ? editor.getHTML() : '');
+                    exportToPdf(title, editor ? editor.getHTML() : '', authorName);
                     setShowShareMenu(false);
                   }}
                   className="w-full flex items-center justify-between p-3.5 bg-violet-50 hover:bg-violet-100 border border-violet-100 rounded-xl transition-all group text-left cursor-pointer"
@@ -1072,7 +1098,7 @@ export default function Editor({ content, onChange, onAiAction, title, onTitleCh
                 {/* Download Word Document Option */}
                 <button
                   onClick={() => {
-                    exportToWord(title, editor ? editor.getHTML() : '');
+                    exportToWord(title, editor ? editor.getHTML() : '', authorName);
                     setShowShareMenu(false);
                   }}
                   className="w-full flex items-center justify-between p-3.5 bg-blue-50 hover:bg-blue-100 border border-blue-100 rounded-xl transition-all group text-left cursor-pointer"
