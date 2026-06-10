@@ -54,7 +54,6 @@ import {
   Wand2,
   Type,
   History,
-  Languages as GreekIcon,
   Presentation,
   X,
   Loader2,
@@ -737,7 +736,7 @@ export default function Editor({ content, onChange, onAiAction, title, onTitleCh
                 )}
                 title="Análise Exegética IA da Palavra Selecionada"
               >
-                <GreekIcon size={12} />
+                <Languages size={12} />
                 <span>{isLexiconLoading ? "Analisando..." : "Hebraico/Grego"}</span>
               </button>
               

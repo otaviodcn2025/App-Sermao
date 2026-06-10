@@ -1,12 +1,13 @@
-import { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType } from 'docx';
-import { saveAs } from 'file-saver';
-// @ts-ignore
-import html2pdf from 'html2pdf.js';
+// Dynamic imports are used inside the active functions below to prevent startup loading errors
+// and keep bundle sizes small for fast loading.
 
 /**
  * Super simple HTML to DOCX converter for the sermon editor.
  */
 export async function exportToWord(title: string, htmlContent: string) {
+  const { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType } = await import('docx');
+  const { saveAs } = await import('file-saver');
+
   // Simple parser: strip tags for now or use a basic approach
   // In a real app we'd use a DOMParser to walk the nodes
   const parser = new DOMParser();
@@ -104,6 +105,9 @@ export async function exportToWord(title: string, htmlContent: string) {
  * Exports HTML content to PDF using html2pdf.js
  */
 export async function exportToPdf(title: string, htmlContent: string) {
+  const html2pdfModule = await import('html2pdf.js');
+  const html2pdf = html2pdfModule.default || (html2pdfModule as any);
+
   const element = document.createElement('div');
   element.innerHTML = `
     <div style="padding: 40px; font-family: sans-serif; line-height: 1.6; color: #1e293b;">
