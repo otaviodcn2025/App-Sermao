@@ -1,16 +1,18 @@
 import * as pdfjs from 'pdfjs-dist';
 import { withTimeout } from './utils';
 
-// Usar o worker local importado via Vite para consistência e confiabilidade
+// Usar o worker local importado via Vite para consistência e confiabilidade, com fallback CDN robusto se necessário
 // @ts-ignore - Vite specific import for worker URL
 import pdfjsWorker from 'pdfjs-dist/build/pdf.worker.mjs?url';
 
-pdfjs.GlobalWorkerOptions.workerSrc = pdfjsWorker;
+if (typeof window !== 'undefined') {
+  pdfjs.GlobalWorkerOptions.workerSrc = pdfjsWorker || `https://unpkg.com/pdfjs-dist@${pdfjs.version || '5.7.284'}/build/pdf.worker.mjs`;
+}
 
 export async function extractTextFromPdf(file: File): Promise<{ text: string, toc: { title: string, charOffset: number }[] }> {
   return withTimeout(
     (async () => {
-      console.log(`Iniciando extração de PDF: ${file.name}`);
+      console.log(`Iniciando extração bento de PDF: ${file.name}`);
       try {
         const arrayBuffer = await file.arrayBuffer();
         const loadingTask = pdfjs.getDocument({ 
@@ -20,7 +22,7 @@ export async function extractTextFromPdf(file: File): Promise<{ text: string, to
         });
         
         const pdf = await loadingTask.promise;
-        console.log(`PDF carregado. Páginas: ${pdf.numPages}`);
+        console.log(`PDF carregado. Páginas totais: ${pdf.numPages}`);
         
         // Extract TOC (Outline) if available
         let toc: { title: string, charOffset: number }[] = [];
@@ -45,25 +47,43 @@ export async function extractTextFromPdf(file: File): Promise<{ text: string, to
           console.warn('Erro ao extrair sumário do PDF:', tocErr);
         }
 
-        let fullText = '';
         const maxPages = Math.min(pdf.numPages, 150);
+        const pageTexts = new Array(maxPages);
+        
+        // Extração em lotes paralelos de 15 páginas para velocidade ultra-rápida (são ~200ms por página sequentially)
+        const batchSize = 15;
+        for (let i = 0; i < maxPages; i += batchSize) {
+          const batchPromises = [];
+          for (let k = 0; k < batchSize && (i + k) < maxPages; k++) {
+            const pageNum = i + k + 1;
+            const index = i + k;
+            
+            batchPromises.push((async (pNum, idx) => {
+              try {
+                const page = await pdf.getPage(pNum);
+                const textContent = await page.getTextContent();
+                const pageText = textContent.items
+                  .map((item: any) => item.str)
+                  .join(' ');
+                pageTexts[idx] = pageText;
+              } catch (pageErr) {
+                console.warn(`Erro parcial ao ler página ${pNum} do PDF:`, pageErr);
+                pageTexts[idx] = '';
+              }
+            })(pageNum, index));
+          }
+          await Promise.all(batchPromises);
+        }
 
-        for (let i = 1; i <= maxPages; i++) {
-          try {
-            const page = await pdf.getPage(i);
-            const textContent = await page.getTextContent();
-            const pageText = textContent.items
-              .map((item: any) => item.str)
-              .join(' ');
-            fullText += pageText + '\n\n';
-
-            // Safety limit to guarantee the text never exceeds the Firestore 1MB document size limit
-            if (fullText.length > 600000) {
-              console.warn('Limite de segurança de 600k caracteres atingido para PDF. Parando extração.');
-              break;
-            }
-          } catch (pageErr) {
-            console.warn(`Erro parcial ao ler página ${i} do PDF, continuando...`, pageErr);
+        let fullText = '';
+        for (let i = 0; i < maxPages; i++) {
+          fullText += (pageTexts[i] || '') + '\n\n';
+          
+          // Safety limit to guarantee the text never exceeds the Firestore 1MB document size limit
+          if (fullText.length > 600000) {
+            console.warn('Limite de segurança de 600k caracteres atingido para PDF. Truncando.');
+            fullText = fullText.substring(0, 600000);
+            break;
           }
         }
 
@@ -77,7 +97,7 @@ export async function extractTextFromPdf(file: File): Promise<{ text: string, to
           return { ...item, charOffset: offset };
         }).filter(item => item.charOffset !== -1);
 
-        console.log(`Extração de PDF concluída. Caracteres: ${fullText.length}. Itens TOC: ${toc.length}`);
+        console.log(`Extração de PDF e lotes paralelos concluída. Caracteres: ${fullText.length}. Itens TOC: ${toc.length}`);
         return { text: fullText, toc };
       } catch (error) {
         console.error('Erro detalhado no processamento do PDF:', error);

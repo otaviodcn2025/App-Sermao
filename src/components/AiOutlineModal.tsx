@@ -19,8 +19,10 @@ import * as pdfjs from 'pdfjs-dist';
 // @ts-ignore - Vite specific import for worker URL
 import pdfjsWorker from 'pdfjs-dist/build/pdf.worker.mjs?url';
 
-// Configure PDF.js worker
-pdfjs.GlobalWorkerOptions.workerSrc = pdfjsWorker;
+// Configure PDF.js worker with robust local + CDN fallback
+if (typeof window !== 'undefined') {
+  pdfjs.GlobalWorkerOptions.workerSrc = pdfjsWorker || `https://unpkg.com/pdfjs-dist@${pdfjs.version || '5.7.284'}/build/pdf.worker.mjs`;
+}
 
 interface AiOutlineModalProps {
   onClose: () => void;
@@ -90,16 +92,34 @@ export default function AiOutlineModal({ onClose, onGenerate, isLoading }: AiOut
   const extractTextFromPdf = async (file: File): Promise<string> => {
     const arrayBuffer = await file.arrayBuffer();
     const pdf = await pdfjs.getDocument({ data: arrayBuffer }).promise;
-    let fullText = '';
     
-    for (let i = 1; i <= pdf.numPages; i++) {
-      const page = await pdf.getPage(i);
-      const textContent = await page.getTextContent();
-      const pageText = textContent.items.map((item: any) => item.str).join(' ');
-      fullText += pageText + '\n';
+    const maxPages = Math.min(pdf.numPages, 100); // safety limit for generation context
+    const pageTexts = new Array(maxPages);
+    
+    // Extração paralela em lotes de 15 páginas para velocidade ultra rápida
+    const batchSize = 15;
+    for (let i = 0; i < maxPages; i += batchSize) {
+      const batchPromises = [];
+      for (let k = 0; k < batchSize && (i + k) < maxPages; k++) {
+        const pageNum = i + k + 1;
+        const index = i + k;
+        
+        batchPromises.push((async (pNum, idx) => {
+          try {
+            const page = await pdf.getPage(pNum);
+            const textContent = await page.getTextContent();
+            const pageText = textContent.items.map((item: any) => item.str).join(' ');
+            pageTexts[idx] = pageText;
+          } catch (pageErr) {
+            console.warn(`Erro parcial ao ler página ${pNum} do PDF no Modal:`, pageErr);
+            pageTexts[idx] = '';
+          }
+        })(pageNum, index));
+      }
+      await Promise.all(batchPromises);
     }
     
-    return fullText;
+    return pageTexts.join('\n\n');
   };
 
   const removeFile = (name: string) => {

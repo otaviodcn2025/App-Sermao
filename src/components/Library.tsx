@@ -25,8 +25,10 @@ import pdfjsWorker from 'pdfjs-dist/build/pdf.worker.mjs?url';
 import { db, handleFirestoreError, OperationType } from '@/src/lib/firebase';
 import { doc, updateDoc } from 'firebase/firestore';
 
-// Configuração do Worker do PDF.js
-pdfjs.GlobalWorkerOptions.workerSrc = pdfjsWorker;
+// Configuração do Worker do PDF.js com fallback CDN robusto
+if (typeof window !== 'undefined') {
+  pdfjs.GlobalWorkerOptions.workerSrc = pdfjsWorker || `https://unpkg.com/pdfjs-dist@${pdfjs.version || '5.7.284'}/build/pdf.worker.mjs`;
+}
 
 import Reader from './Reader';
 
