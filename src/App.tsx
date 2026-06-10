@@ -24,7 +24,8 @@ import {
   Download,
   RefreshCcw,
   Layers,
-  Calendar
+  Calendar,
+  LayoutDashboard
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import Editor from './components/Editor';
@@ -32,6 +33,7 @@ import BibleSearch from './components/BibleSearch';
 import Auth from './components/Auth';
 import PreachingSchedule from './components/PreachingSchedule';
 import SeriesPanel from './components/SeriesPanel';
+import Dashboard from './components/Dashboard';
 import { Sermon, UserProfile, Resource, Series, Slide, AgendaEntry } from './types';
 import { cn, formatDate, parseSlides, withTimeout, parseMarkdownToHtml } from './lib/utils';
 import { 
@@ -92,8 +94,8 @@ export default function App() {
   const [aiActionType, setAiActionType] = useState<string | null>(null);
   const [isAiModalOpen, setIsAiModalOpen] = useState(false);
   const [sharedSermonData, setSharedSermonData] = useState<Sermon | null>(null);
-  const [mobileTab, setMobileTab] = useState<'list' | 'editor' | 'bible' | 'library' | 'series' | 'agenda'>('editor');
-  const [currentView, setCurrentView] = useState<'editor' | 'library' | 'series' | 'agenda'>('editor');
+  const [mobileTab, setMobileTab] = useState<'dashboard' | 'list' | 'editor' | 'bible' | 'library' | 'series' | 'agenda'>('dashboard');
+  const [currentView, setCurrentView] = useState<'dashboard' | 'editor' | 'library' | 'series' | 'agenda'>('dashboard');
   const [resources, setResources] = useState<Resource[]>([]);
   const [agenda, setAgenda] = useState<AgendaEntry[]>([]);
   const [searchResults, setSearchResults] = useState<string[] | null>(null);
@@ -973,6 +975,20 @@ export default function App() {
         <div className="px-4 py-2 flex flex-col gap-1">
           <button 
             onClick={() => {
+              setCurrentView('dashboard');
+              setMobileTab('dashboard');
+              if(window.innerWidth < 1024) setIsSidebarOpen(false);
+            }}
+            className={cn(
+              "w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-bold transition-all font-sans",
+              currentView === 'dashboard' ? "bg-violet-50 text-violet-600 shadow-sm" : "text-slate-500 hover:bg-slate-50"
+            )}
+          >
+            <LayoutDashboard size={18} />
+            Início / Painel
+          </button>
+          <button 
+            onClick={() => {
               setCurrentView('editor');
               setMobileTab('editor');
               if(window.innerWidth < 1024) setIsSidebarOpen(false);
@@ -1184,7 +1200,23 @@ export default function App() {
         {/* Editor, Series, Agenda or Library Body */}
         <div className="flex-1 overflow-y-auto overflow-x-hidden px-4 md:px-12 py-6 bg-slate-50">
           <div className="max-w-[1200px] mx-auto pb-24 md:pb-12 h-full">
-            {currentView === 'library' ? (
+            {currentView === 'dashboard' ? (
+              <Dashboard
+                sermons={sermons}
+                series={series}
+                resources={resources}
+                agenda={agenda}
+                onSelectSermon={(sId) => {
+                  setCurrentSermonId(sId);
+                  setCurrentView('editor');
+                }}
+                onNavigateView={(view) => {
+                  setCurrentView(view);
+                  setMobileTab(view as any);
+                }}
+                onCreateSermon={() => createNewSermon()}
+              />
+            ) : currentView === 'library' ? (
               <Library 
                 resources={resources}
                 onUpload={handleResourceUpload}
@@ -1371,24 +1403,30 @@ export default function App() {
       {/* Bottom Navigation for Mobile */}
       <nav className="fixed bottom-0 left-0 right-0 h-16 bg-white/95 backdrop-blur-md border-t border-slate-200 flex items-center justify-around z-[100] lg:hidden px-2 pb-safe">
         <button 
-          onClick={() => setMobileTab('list')}
+          onClick={() => {
+            setMobileTab('dashboard');
+            setCurrentView('dashboard');
+          }}
           className={cn(
             "flex flex-col items-center gap-1 flex-1 py-1 transition-all rounded-xl",
-             mobileTab === 'list' ? "text-orange-600 scale-110" : "text-slate-400"
+             mobileTab === 'dashboard' ? "text-violet-600 scale-110" : "text-slate-400"
           )}
         >
-          <List size={22} />
-          <span className="text-[10px] font-bold uppercase tracking-wider">Esboços</span>
+          <LayoutDashboard size={22} id="mobile-nav-dashboard" />
+          <span className="text-[10px] font-bold uppercase tracking-wider">Início</span>
         </button>
         <div className="w-px h-8 bg-slate-100" />
         <button 
-          onClick={() => setMobileTab('editor')}
+          onClick={() => {
+            setMobileTab('editor');
+            setCurrentView('editor');
+          }}
           className={cn(
             "flex flex-col items-center gap-1 flex-1 py-1 transition-all rounded-xl",
-             mobileTab === 'editor' ? "text-orange-600 scale-110" : "text-slate-400"
+             mobileTab === 'editor' ? "text-violet-600 scale-110" : "text-slate-400"
           )}
         >
-          <BookOpen size={22} />
+          <FileText size={22} id="mobile-nav-editor" />
           <span className="text-[10px] font-bold uppercase tracking-wider">Editor</span>
         </button>
         <button 
@@ -1398,10 +1436,10 @@ export default function App() {
           }}
           className={cn(
             "flex flex-col items-center gap-1 flex-1 py-1 transition-all rounded-xl",
-             mobileTab === 'library' ? "text-orange-600 scale-110" : "text-slate-400"
+             mobileTab === 'library' ? "text-violet-600 scale-110" : "text-slate-400"
           )}
         >
-          <Layout size={22} />
+          <Book size={22} id="mobile-nav-library" />
           <span className="text-[10px] font-bold uppercase tracking-wider">Biblioteca</span>
         </button>
         <div className="w-px h-8 bg-slate-100" />
@@ -1409,10 +1447,10 @@ export default function App() {
           onClick={() => setMobileTab('bible')}
           className={cn(
             "flex flex-col items-center gap-1 flex-1 py-1 transition-all rounded-xl",
-             mobileTab === 'bible' ? "text-orange-600 scale-110" : "text-slate-400"
+             mobileTab === 'bible' ? "text-violet-600 scale-110" : "text-slate-400"
           )}
         >
-          <BookOpen size={22} />
+          <BookOpen size={22} id="mobile-nav-bible" />
           <span className="text-[10px] font-bold uppercase tracking-wider">Bíblia</span>
         </button>
       </nav>
