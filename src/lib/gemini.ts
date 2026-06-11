@@ -486,3 +486,59 @@ Instruções Adicionais de Formatação:
   }
 }
 
+export async function getBlueLetterStudy(reference: string, verseText: string) {
+  try {
+    const ai = getAIClient();
+    if (!ai) return null;
+
+    const prompt = `Gere um estudo bíblico aprofundado no formato "Blue Letter Bible" (em Português brasileiro) para a passagem/versículo "${reference}".
+    
+    TEXTO DO VERSÍCULO:
+    "${verseText}"
+
+    Retorne um objeto JSON estrito com a seguinte estrutura de dados detalhada:
+    {
+      "strongs": [
+        {
+          "word": "palavra original (hebraico/grego)",
+          "transliteration": "pronúncia/transliteração",
+          "strongCode": "código Strong (ex: G25, H1254)",
+          "partOfSpeech": "classe gramatical (ex: Verbo, Substantivo)",
+          "meaning": "significado principal em português",
+          "theologicalDetail": "detalhe exegético/teológico rápido no contexto desta passagem"
+        }
+      ],
+      "translations": {
+        "acf": "Versão Almeida Corrigida Fiel correspondente ao versículo",
+        "ara": "Versão Almeida Revista e Atualizada correspondente ao versículo",
+        "ntlh": "Versão Nova Tradução na Linguagem de Hoje correspondente ao versículo"
+      },
+      "crossReferences": [
+        {
+          "ref": "Passagem relacionada (ex: Romanos 5:8)",
+          "text": "Texto resumido do versículo correspondente",
+          "connection": "Breve nota de como esta passagem se conecta teologicamente ao versículo original"
+        }
+      ],
+      "commentary": {
+        "devotional": "Comentário devocional focado no coração e crescimento espiritual.",
+        "expositional": "Breve comentário exegético pastoral focado na estrutura, significado original e aplicação homilética batista."
+      }
+    }`;
+
+    const response = await ai.models.generateContent({
+      model: DEFAULT_MODEL,
+      contents: prompt,
+      config: {
+        responseMimeType: "application/json"
+      }
+    });
+
+    return JSON.parse(response.text || '{}');
+  } catch (error) {
+    console.error("Blue Letter study AI error:", error);
+    return null;
+  }
+}
+
+
