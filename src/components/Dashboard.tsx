@@ -169,6 +169,28 @@ export default function Dashboard({
         </div>
       </div>
 
+      {/* Interactive Manual Quick Access Card */}
+      <div className="bg-gradient-to-r from-violet-50 to-indigo-50 border border-violet-100/85 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="flex items-start gap-3">
+          <div className="p-2.5 bg-violet-100/80 text-violet-700 rounded-xl mt-0.5">
+            <Sparkles size={18} className="text-violet-600 animate-pulse" />
+          </div>
+          <div>
+            <span className="font-extrabold text-[10px] text-violet-700 uppercase tracking-widest block">Novo Recurso Recomendado!</span>
+            <h4 className="text-sm font-black text-slate-800 mt-0.5 uppercase tracking-tight">Guia Ministerial Interativo & Simulador de IA</h4>
+            <p className="text-xs text-slate-500 leading-normal mt-1 max-w-2xl">
+              Aprenda a acelerar seu planejamento criando esboços guiados, integrando exegese do léxico grego/hebraico no sermão e navegando em suas séries de mensagens de modo dinâmico.
+            </p>
+          </div>
+        </div>
+        <button
+          onClick={() => onNavigateView('manual' as any)}
+          className="flex items-center justify-center gap-1.5 px-4.5 py-2.5 bg-violet-600 hover:bg-violet-700 text-white text-xs font-black rounded-xl transition-all shadow-md shrink-0 uppercase tracking-wider cursor-pointer"
+        >
+          Abrir Manual Completo <ChevronRight size={13} strokeWidth={3} />
+        </button>
+      </div>
+
       {/* Main Stats Grid */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Metric 1 */}

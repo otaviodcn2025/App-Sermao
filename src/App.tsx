@@ -25,7 +25,8 @@ import {
   RefreshCcw,
   Layers,
   Calendar,
-  LayoutDashboard
+  LayoutDashboard,
+  HelpCircle
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import Editor from './components/Editor';
@@ -77,6 +78,7 @@ import AdminPanel from './components/AdminPanel';
 import AiOutlineModal from './components/AiOutlineModal';
 import Library from './components/Library';
 import SlideGenerator from './components/SlideGenerator';
+import InteractiveManual from './components/InteractiveManual';
 
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
@@ -94,8 +96,8 @@ export default function App() {
   const [aiActionType, setAiActionType] = useState<string | null>(null);
   const [isAiModalOpen, setIsAiModalOpen] = useState(false);
   const [sharedSermonData, setSharedSermonData] = useState<Sermon | null>(null);
-  const [mobileTab, setMobileTab] = useState<'dashboard' | 'list' | 'editor' | 'bible' | 'library' | 'series' | 'agenda'>('dashboard');
-  const [currentView, setCurrentView] = useState<'dashboard' | 'editor' | 'library' | 'series' | 'agenda'>('dashboard');
+  const [mobileTab, setMobileTab] = useState<'dashboard' | 'list' | 'editor' | 'bible' | 'library' | 'series' | 'agenda' | 'manual'>('dashboard');
+  const [currentView, setCurrentView] = useState<'dashboard' | 'editor' | 'library' | 'series' | 'agenda' | 'manual'>('dashboard');
   const [resources, setResources] = useState<Resource[]>([]);
   const [agenda, setAgenda] = useState<AgendaEntry[]>([]);
   const [searchResults, setSearchResults] = useState<string[] | null>(null);
@@ -1043,6 +1045,20 @@ export default function App() {
             <Book size={18} />
             Biblioteca Teológica
           </button>
+          <button 
+            onClick={() => {
+              setCurrentView('manual');
+              setMobileTab('manual');
+              if(window.innerWidth < 1024) setIsSidebarOpen(false);
+            }}
+            className={cn(
+              "w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-bold transition-all font-sans",
+              currentView === 'manual' ? "bg-violet-50 text-violet-600 shadow-sm" : "text-slate-500 hover:bg-slate-50"
+            )}
+          >
+            <HelpCircle size={18} className={currentView === 'manual' ? "text-violet-600" : "text-slate-400"} />
+            Manual do Pastor & IA
+          </button>
         </div>
 
         <div className="flex-1 overflow-y-auto px-2 space-y-1 pb-20 lg:pb-0">
@@ -1250,6 +1266,13 @@ export default function App() {
                 onSelectSermon={(sId) => {
                   setCurrentSermonId(sId);
                   setCurrentView('editor');
+                }}
+              />
+            ) : currentView === 'manual' ? (
+              <InteractiveManual 
+                onNavigateView={(view) => {
+                  setCurrentView(view);
+                  setMobileTab(view as any);
                 }}
               />
             ) : currentSermon ? (
