@@ -79,6 +79,7 @@ import AiOutlineModal from './components/AiOutlineModal';
 import Library from './components/Library';
 import SlideGenerator from './components/SlideGenerator';
 import InteractiveManual from './components/InteractiveManual';
+import SermonList from './components/SermonList';
 
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
@@ -96,8 +97,8 @@ export default function App() {
   const [aiActionType, setAiActionType] = useState<string | null>(null);
   const [isAiModalOpen, setIsAiModalOpen] = useState(false);
   const [sharedSermonData, setSharedSermonData] = useState<Sermon | null>(null);
-  const [mobileTab, setMobileTab] = useState<'dashboard' | 'list' | 'editor' | 'bible' | 'library' | 'series' | 'agenda' | 'manual'>('dashboard');
-  const [currentView, setCurrentView] = useState<'dashboard' | 'editor' | 'library' | 'series' | 'agenda' | 'manual'>('dashboard');
+  const [mobileTab, setMobileTab] = useState<'dashboard' | 'list' | 'editor' | 'bible' | 'library' | 'series' | 'agenda' | 'manual' | 'sermons-list'>('dashboard');
+  const [currentView, setCurrentView] = useState<'dashboard' | 'editor' | 'library' | 'series' | 'agenda' | 'manual' | 'sermons-list'>('dashboard');
   const [resources, setResources] = useState<Resource[]>([]);
   const [agenda, setAgenda] = useState<AgendaEntry[]>([]);
   const [searchResults, setSearchResults] = useState<string[] | null>(null);
@@ -991,6 +992,20 @@ export default function App() {
           </button>
           <button 
             onClick={() => {
+              setCurrentView('sermons-list');
+              setMobileTab('sermons-list');
+              if(window.innerWidth < 1024) setIsSidebarOpen(false);
+            }}
+            className={cn(
+              "w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-bold transition-all font-sans",
+              currentView === 'sermons-list' ? "bg-violet-50 text-violet-600 shadow-sm" : "text-slate-500 hover:bg-slate-50"
+            )}
+          >
+            <BookOpen size={18} className={currentView === 'sermons-list' ? "text-violet-600" : "text-slate-400"} />
+            Meus Sermões
+          </button>
+          <button 
+            onClick={() => {
               setCurrentView('editor');
               setMobileTab('editor');
               if(window.innerWidth < 1024) setIsSidebarOpen(false);
@@ -1225,12 +1240,34 @@ export default function App() {
                 onSelectSermon={(sId) => {
                   setCurrentSermonId(sId);
                   setCurrentView('editor');
+                  setMobileTab('editor');
                 }}
+                onNavigateView={(view) => {
+                  if (view === 'editor') {
+                    setCurrentView('sermons-list');
+                    setMobileTab('sermons-list');
+                  } else {
+                    setCurrentView(view);
+                    setMobileTab(view as any);
+                  }
+                }}
+                onCreateSermon={() => createNewSermon()}
+              />
+            ) : currentView === 'sermons-list' ? (
+              <SermonList
+                sermons={sermons}
+                series={series}
+                onSelectSermon={(sId) => {
+                  setCurrentSermonId(sId);
+                  setCurrentView('editor');
+                  setMobileTab('editor');
+                }}
+                onDeleteSermon={deleteSermon}
+                onCreateSermon={() => createNewSermon()}
                 onNavigateView={(view) => {
                   setCurrentView(view);
                   setMobileTab(view as any);
                 }}
-                onCreateSermon={() => createNewSermon()}
               />
             ) : currentView === 'library' ? (
               <Library 
