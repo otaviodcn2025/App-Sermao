@@ -4,6 +4,20 @@ import App from './App.tsx';
 import ErrorBoundary from './components/ErrorBoundary';
 import './index.css';
 
+// Interceptar o retorno do Google OAuth no popup
+if (typeof window !== 'undefined' && window.opener && window.location.hash.includes('access_token')) {
+  try {
+    const params = new URLSearchParams(window.location.hash.substring(1));
+    const token = params.get('access_token');
+    if (token) {
+      window.opener.postMessage({ type: 'GOOGLE_DRIVE_AUTH_SUCCESS', token }, window.location.origin);
+    }
+  } catch (err) {
+    console.error('Erro ao enviar mensagem para a janela principal:', err);
+  }
+  window.close();
+}
+
 console.log("Iniciando aplicação Sermão Digital...");
 
 const container = document.getElementById('root');

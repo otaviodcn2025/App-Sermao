@@ -6,7 +6,7 @@ import firebaseConfig from '../../firebase-applet-config.json';
 // Initialize Firebase with safety check
 const app = initializeApp(firebaseConfig);
 
-export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
+export const db = getFirestore(app, (firebaseConfig as any).firestoreDatabaseId);
 export const auth = getAuth(app);
 
 export enum OperationType {

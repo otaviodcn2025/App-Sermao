@@ -16,6 +16,7 @@ import {
   LogOut,
   Shield,
   Users,
+  Menu,
   Clock,
   User as UserIcon,
   X,
@@ -1058,7 +1059,7 @@ export default function App() {
             )}
           >
             <Book size={18} />
-            Biblioteca Teológica
+            Minha Biblioteca
           </button>
           <button 
             onClick={() => {
@@ -1167,9 +1168,10 @@ export default function App() {
           <div className="flex items-center gap-2 lg:gap-4">
             <button 
               onClick={() => setIsSidebarOpen(!isSidebarOpen)} 
-              className="p-2 hover:bg-slate-100 rounded-xl text-slate-500 transition-colors lg:hidden"
+              className="p-2 hover:bg-slate-100 rounded-xl text-slate-500 transition-colors"
+              title="Menu Principal"
             >
-              <Users size={20} />
+              <Menu size={20} />
             </button>
             <div className="hidden lg:block w-px h-4 bg-slate-200" />
             <div className="flex items-center gap-2">

@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { 
   Book, 
   Plus, 
@@ -14,7 +14,11 @@ import {
   ChevronLeft,
   Maximize2,
   Bookmark,
-  Tag
+  Tag,
+  Cloud,
+  CloudDownload,
+  RefreshCw,
+  X
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '@/src/lib/utils';
@@ -22,8 +26,9 @@ import { Resource } from '@/src/types';
 import * as pdfjs from 'pdfjs-dist';
 // @ts-ignore - Vite specific import for worker URL
 import pdfjsWorker from 'pdfjs-dist/build/pdf.worker.mjs?url';
-import { db, handleFirestoreError, OperationType } from '@/src/lib/firebase';
+import { db, auth, handleFirestoreError, OperationType } from '@/src/lib/firebase';
 import { doc, updateDoc } from 'firebase/firestore';
+import { signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
 
 // Configuração do Worker do PDF.js com fallback CDN robusto
 if (typeof window !== 'undefined') {
@@ -108,6 +113,135 @@ export default function Library({ resources, onUpload, onDelete, userApproved, s
   const [selectedResource, setSelectedResource] = useState<Resource | null>(null);
   const [isReadingMode, setIsReadingMode] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Google Drive state
+  const [googleToken, setGoogleToken] = useState<string | null>(null);
+  const [isConnectingDrive, setIsConnectingDrive] = useState(false);
+  const [isDriveModalOpen, setIsDriveModalOpen] = useState(false);
+  const [driveFiles, setDriveFiles] = useState<any[]>([]);
+  const [isListingDrive, setIsListingDrive] = useState(false);
+  const [driveSearchQuery, setDriveSearchQuery] = useState('');
+  const [isImportingFile, setIsImportingFile] = useState<string | null>(null);
+
+  // Escutar eventos de mensagem da janela de login popup do Google OAuth
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      if (event.origin !== window.location.origin) return;
+      if (event.data?.type === 'GOOGLE_DRIVE_AUTH_SUCCESS' && event.data?.token) {
+        setGoogleToken(event.data.token);
+        setIsDriveModalOpen(true);
+        fetchDriveFiles(event.data.token);
+      }
+    };
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, []);
+
+  const handleConnectDrive = async () => {
+    setIsConnectingDrive(true);
+    try {
+      const clientId = "881804579371-jnhcoq65c1ro6rs1ka50abhed7cve25o.apps.googleusercontent.com";
+      const redirectUri = window.location.origin;
+      const scopes = "https://www.googleapis.com/auth/drive.readonly";
+      const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${encodeURIComponent(clientId)}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=token&scope=${encodeURIComponent(scopes)}&prompt=consent`;
+
+      const authWindow = window.open(authUrl, 'oauth_popup', 'width=600,height=700');
+      if (!authWindow) {
+        alert('Por favor, permita popups para este site para se conectar ao seu Google Drive.');
+      }
+    } catch (err: any) {
+      console.error('Erro de conexão ao Google Drive:', err);
+      alert('Erro ao conectar ao Google Drive: ' + err.message);
+    } finally {
+      setIsConnectingDrive(false);
+    }
+  };
+
+  const fetchDriveFiles = async (token: string, searchWord: string = '') => {
+    setIsListingDrive(true);
+    try {
+      let baseQuery = "(mimeType = 'application/pdf' or name contains '.pdf' or name contains '.epub')";
+      if (searchWord.trim()) {
+        const escapedSearchWord = searchWord.replace(/'/g, "\\'");
+        baseQuery = `(${baseQuery}) and name contains '${escapedSearchWord}'`;
+      }
+      const query = encodeURIComponent(baseQuery);
+      const url = `https://www.googleapis.com/drive/v3/files?q=${query}&fields=files(id,name,mimeType,size,createdTime)&pageSize=50`;
+      
+      const response = await fetch(url, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Google API retornou status ${response.status}`);
+      }
+      
+      const data = await response.json();
+      setDriveFiles(data.files || []);
+    } catch (err: any) {
+      console.error('Erro ao listar arquivos do Google Drive:', err);
+    } finally {
+      setIsListingDrive(false);
+    }
+  };
+
+  // Trigger search on Google Drive
+  const handleSearchDrive = () => {
+    if (googleToken) {
+      fetchDriveFiles(googleToken, driveSearchQuery);
+    }
+  };
+
+  // Format file size
+  const formatBytes = (bytesStr?: string) => {
+    if (!bytesStr) return 'Tamanho desconhecido';
+    const bytes = parseInt(bytesStr, 10);
+    if (isNaN(bytes)) return 'Tamanho desconhecido';
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
+
+  const handleImportDriveFile = async (driveFile: { id: string, name: string, mimeType: string }) => {
+    if (isImportingFile) return;
+    setIsImportingFile(driveFile.id);
+    setIsUploading(true);
+    try {
+      const url = `https://www.googleapis.com/drive/v3/files/${driveFile.id}?alt=media`;
+      const response = await fetch(url, {
+        headers: {
+          Authorization: `Bearer ${googleToken}`
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Erro ao baixar arquivo: ${response.statusText}`);
+      }
+      
+      const blob = await response.blob();
+      
+      let fileType = driveFile.mimeType;
+      if (driveFile.name.toLowerCase().endsWith('.pdf')) {
+        fileType = 'application/pdf';
+      } else if (driveFile.name.toLowerCase().endsWith('.epub')) {
+        fileType = 'application/epub+zip';
+      }
+      
+      const file = new File([blob], driveFile.name, { type: fileType });
+      
+      await onUpload(file);
+    } catch (err: any) {
+      console.error('Erro ao importar arquivo:', err);
+      alert('Falha ao importar o arquivo: ' + err.message);
+    } finally {
+      setIsImportingFile(null);
+      setIsUploading(false);
+    }
+  };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -280,6 +414,21 @@ export default function Library({ resources, onUpload, onDelete, userApproved, s
               Aguardando Aprovação de Admin
             </div>
           )}
+
+          {/* Botão Google Drive */}
+          <button
+            onClick={googleToken ? () => setIsDriveModalOpen(true) : handleConnectDrive}
+            disabled={isConnectingDrive || !userApproved}
+            className="flex items-center gap-2 px-5 py-3 bg-violet-600 hover:bg-violet-700 text-white rounded-2xl font-bold transition-all shadow-lg shadow-violet-100 active:scale-95 disabled:opacity-50 disabled:pointer-events-none"
+          >
+            {isConnectingDrive ? (
+              <Loader2 size={18} className="animate-spin" />
+            ) : (
+              <Cloud size={18} />
+            )}
+            {isConnectingDrive ? "Conectando..." : googleToken ? "Google Drive" : "Sincronizar Google Drive"}
+          </button>
+
           <button
             onClick={() => fileInputRef.current?.click()}
             disabled={isUploading || !userApproved}
@@ -408,6 +557,166 @@ export default function Library({ resources, onUpload, onDelete, userApproved, s
           </div>
         )}
       </div>
+
+      {/* Modal do Google Drive */}
+      <AnimatePresence>
+        {isDriveModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              className="relative w-full max-w-2xl h-[80vh] flex flex-col bg-white rounded-[32px] shadow-2xl border border-slate-100 overflow-hidden"
+            >
+              {/* Modal Header */}
+              <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-violet-100 text-violet-600 flex items-center justify-center">
+                    <Cloud size={20} />
+                  </div>
+                  <div>
+                    <h3 className="font-black text-slate-800 tracking-tight text-lg">Google Drive</h3>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest font-mono">SEUS LIVROS E PDFS</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setIsDriveModalOpen(false)}
+                  className="p-2 hover:bg-slate-200 rounded-full text-slate-400 hover:text-slate-600 transition-colors"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+
+              {/* Modal Search Bar */}
+              <div className="p-4 bg-white border-b border-slate-100 flex gap-2">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                  <input
+                    type="text"
+                    placeholder="Pesquisar nos seus arquivos do Drive..."
+                    value={driveSearchQuery}
+                    onChange={(e) => setDriveSearchQuery(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') handleSearchDrive();
+                    }}
+                    className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-violet-500 focus:border-violet-500 transition-all font-medium text-sm"
+                  />
+                </div>
+                <button
+                  onClick={handleSearchDrive}
+                  className="px-5 py-2.5 bg-violet-600 hover:bg-violet-700 text-white rounded-xl font-bold text-sm transition-colors shadow-md shadow-violet-100"
+                >
+                  Buscar
+                </button>
+                <button
+                  onClick={() => {
+                    setDriveSearchQuery('');
+                    if (googleToken) fetchDriveFiles(googleToken, '');
+                  }}
+                  title="Atualizar lista"
+                  className="p-2.5 border border-slate-200 hover:bg-slate-50 text-slate-500 rounded-xl transition-colors"
+                >
+                  <RefreshCw size={18} className={cn(isListingDrive && "animate-spin")} />
+                </button>
+              </div>
+
+              {/* Modal Content / Files List */}
+              <div className="flex-1 overflow-y-auto p-6">
+                {isListingDrive ? (
+                  <div className="flex flex-col items-center justify-center h-full gap-3 text-slate-400">
+                    <Loader2 size={32} className="animate-spin text-violet-600" />
+                    <p className="text-sm font-semibold">Carregando arquivos do Google Drive...</p>
+                  </div>
+                ) : driveFiles.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center h-full text-center p-8 text-slate-400">
+                    <Cloud size={48} className="mb-4 opacity-20 text-slate-300" />
+                    <p className="font-bold text-slate-600">Nenhum livro encontrado</p>
+                    <p className="text-sm max-w-xs mt-1">
+                      Não encontramos arquivos PDF ou ePub na sua busca. Tente buscar por outros termos ou verifique sua conta.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="divide-y divide-slate-100">
+                    {driveFiles.map((file) => {
+                      const isPdf = file.name.toLowerCase().endsWith('.pdf');
+                      const isEpub = file.name.toLowerCase().endsWith('.epub');
+                      const alreadyImported = resources.some(r => r.title === file.name.replace(/\.(pdf|epub)$/i, ''));
+                      
+                      return (
+                        <div key={file.id} className="py-4 flex items-center justify-between gap-4 group">
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div className={cn(
+                              "w-10 h-10 rounded-lg flex items-center justify-center shrink-0",
+                              isPdf ? "bg-red-50 text-red-600" : isEpub ? "bg-emerald-50 text-emerald-600" : "bg-blue-50 text-blue-600"
+                            )}>
+                              <FileText size={20} />
+                            </div>
+                            <div className="min-w-0">
+                              <h4 className="font-bold text-slate-800 text-sm truncate pr-4" title={file.name}>
+                                {file.name}
+                              </h4>
+                              <p className="text-[10px] text-slate-400 font-medium mt-0.5">
+                                {formatBytes(file.size)} • {new Date(file.createdTime).toLocaleDateString('pt-BR')}
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="shrink-0">
+                            {alreadyImported ? (
+                              <div className="flex items-center gap-2">
+                                <span className="text-[10px] font-black uppercase tracking-widest text-emerald-600 bg-emerald-50 px-2 py-1 rounded-lg">
+                                  Sincronizado
+                                </span>
+                                <button
+                                  onClick={() => handleImportDriveFile(file)}
+                                  disabled={isImportingFile !== null}
+                                  className="p-1.5 hover:bg-slate-100 text-slate-400 hover:text-slate-600 rounded-lg transition-colors text-xs font-bold"
+                                  title="Reimportar"
+                                >
+                                  {isImportingFile === file.id ? (
+                                    <Loader2 size={14} className="animate-spin" />
+                                  ) : (
+                                    <RefreshCw size={14} />
+                                  )}
+                                </button>
+                              </div>
+                            ) : (
+                              <button
+                                onClick={() => handleImportDriveFile(file)}
+                                disabled={isImportingFile !== null}
+                                className="flex items-center gap-1.5 px-4 py-2 bg-violet-600 hover:bg-violet-700 text-white rounded-xl text-xs font-black uppercase tracking-widest transition-colors disabled:opacity-50"
+                              >
+                                {isImportingFile === file.id ? (
+                                  <>
+                                    <Loader2 size={12} className="animate-spin" />
+                                    <span>Sincronizando...</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <CloudDownload size={12} />
+                                    <span>Sincronizar</span>
+                                  </>
+                                )}
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* Modal Footer */}
+              <div className="p-4 border-t border-slate-100 bg-slate-50 text-center">
+                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest font-mono">
+                  LOGOS AI • CONECTADO COM SUCESSO AO SEU GOOGLE DRIVE
+                </p>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
