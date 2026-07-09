@@ -91,6 +91,7 @@ export default function App() {
   const [sermons, setSermons] = useState<Sermon[]>([]);
   const [series, setSeries] = useState<Series[]>([]);
   const [currentSermonId, setCurrentSermonId] = useState<string | null>(null);
+  const [sermonLoadError, setSermonLoadError] = useState<string | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false); // Start false
   const [isBibleSearchOpen, setIsBibleSearchOpen] = useState(false); 
   const [isAiLoading, setIsAiLoading] = useState(false);
@@ -258,15 +259,56 @@ export default function App() {
     return () => unsubscribe();
   }, []);
 
+  // Load initial cached data from localStorage immediately when user is authenticated for fast loads
+  useEffect(() => {
+    if (user) {
+      try {
+        const cachedSermons = localStorage.getItem(`sermons_cache_${user.uid}`);
+        if (cachedSermons) {
+          const parsed = JSON.parse(cachedSermons);
+          if (Array.isArray(parsed)) {
+            setSermons(parsed);
+          }
+        }
+
+        const cachedResources = localStorage.getItem(`resources_cache_${user.uid}`);
+        if (cachedResources) {
+          const parsed = JSON.parse(cachedResources);
+          if (Array.isArray(parsed)) {
+            setResources(parsed);
+          }
+        }
+
+        const cachedSeries = localStorage.getItem(`series_cache_${user.uid}`);
+        if (cachedSeries) {
+          const parsed = JSON.parse(cachedSeries);
+          if (Array.isArray(parsed)) {
+            setSeries(parsed);
+          }
+        }
+
+        const cachedAgenda = localStorage.getItem(`agenda_cache_${user.uid}`);
+        if (cachedAgenda) {
+          const parsed = JSON.parse(cachedAgenda);
+          if (Array.isArray(parsed)) {
+            setAgenda(parsed);
+          }
+        }
+      } catch (err) {
+        console.warn('Erro ao carregar dados do cache inicial:', err);
+      }
+    }
+  }, [user]);
+
   // Sync Sermons from Firestore
   useEffect(() => {
     if (!user || !db) return;
 
     const path = 'sermons';
+    // Simple query (no orderBy) to prevent any missing index errors
     const q = query(
       collection(db, path), 
-      where('userId', '==', user.uid),
-      orderBy('updatedAt', 'desc')
+      where('userId', '==', user.uid)
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -274,9 +316,27 @@ export default function App() {
         ...doc.data(),
         id: doc.id
       } as Sermon));
+      
+      // Sort in JS memory to guarantee correct descending order of updates
+      sermonList.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+      
       setSermons(sermonList);
+      setSermonLoadError(null);
+      
+      // Update persistent local cache
+      try {
+        localStorage.setItem(`sermons_cache_${user.uid}`, JSON.stringify(sermonList));
+      } catch (err) {
+        console.warn('Erro ao salvar cache de sermões:', err);
+      }
     }, (error) => {
-      handleFirestoreError(error, OperationType.LIST, path);
+      console.error("Erro na escuta de sermões do Firestore:", error);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      if (errorMessage.includes('resource-exhausted') || errorMessage.includes('Quota exceeded')) {
+        setSermonLoadError('quota_exceeded');
+      } else {
+        setSermonLoadError(errorMessage);
+      }
     });
 
     return () => unsubscribe();
@@ -308,8 +368,7 @@ export default function App() {
     const path = 'resources';
     const q = query(
       collection(db, path), 
-      where('userId', '==', user.uid),
-      orderBy('createdAt', 'desc')
+      where('userId', '==', user.uid)
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -317,9 +376,20 @@ export default function App() {
         ...doc.data(),
         id: doc.id
       } as Resource));
+      
+      // Sort in memory by createdAt descending
+      resourceList.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+      
       setResources(resourceList);
+      
+      // Update persistent local cache
+      try {
+        localStorage.setItem(`resources_cache_${user.uid}`, JSON.stringify(resourceList));
+      } catch (err) {
+        console.warn('Erro ao salvar cache de biblioteca:', err);
+      }
     }, (error) => {
-      handleFirestoreError(error, OperationType.LIST, path);
+      console.error("Erro na escuta de recursos do Firestore:", error);
     });
 
     return () => unsubscribe();
@@ -332,8 +402,7 @@ export default function App() {
     const path = 'series';
     const q = query(
       collection(db, path), 
-      where('userId', '==', user.uid),
-      orderBy('createdAt', 'desc')
+      where('userId', '==', user.uid)
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -341,9 +410,20 @@ export default function App() {
         ...doc.data(),
         id: doc.id
       } as Series));
+      
+      // Sort in memory by createdAt descending
+      seriesList.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+      
       setSeries(seriesList);
+      
+      // Update persistent local cache
+      try {
+        localStorage.setItem(`series_cache_${user.uid}`, JSON.stringify(seriesList));
+      } catch (err) {
+        console.warn('Erro ao salvar cache de séries:', err);
+      }
     }, (error) => {
-      handleFirestoreError(error, OperationType.LIST, path);
+      console.error("Erro na escuta de séries do Firestore:", error);
     });
 
     return () => unsubscribe();
@@ -356,8 +436,7 @@ export default function App() {
     const path = 'agenda';
     const q = query(
       collection(db, path), 
-      where('userId', '==', user.uid),
-      orderBy('date', 'asc')
+      where('userId', '==', user.uid)
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -365,9 +444,24 @@ export default function App() {
         ...doc.data(),
         id: doc.id
       } as AgendaEntry));
+      
+      // Sort in memory by date ascending
+      agendaList.sort((a, b) => {
+        const dateA = a.date ? new Date(a.date).getTime() : 0;
+        const dateB = b.date ? new Date(b.date).getTime() : 0;
+        return dateA - dateB;
+      });
+      
       setAgenda(agendaList);
+      
+      // Update persistent local cache
+      try {
+        localStorage.setItem(`agenda_cache_${user.uid}`, JSON.stringify(agendaList));
+      } catch (err) {
+        console.warn('Erro ao salvar cache de agenda:', err);
+      }
     }, (error) => {
-      handleFirestoreError(error, OperationType.LIST, path);
+      console.error("Erro na escuta de agenda do Firestore:", error);
     });
 
     return () => unsubscribe();
@@ -1233,10 +1327,27 @@ export default function App() {
                 <Presentation size={16} />
                 <span className="hidden md:inline">Apresentar</span>
               </button>
-              <div className="hidden lg:flex items-center gap-1.5 text-[10px] text-slate-400 font-bold uppercase tracking-tighter bg-slate-50 px-2 py-1 rounded border border-slate-100">
-               <Save size={10} />
-               Sincronizado
-             </div>
+              {sermonLoadError ? (
+                sermonLoadError === 'quota_exceeded' ? (
+                  <div className="flex items-center gap-1.5 text-[10px] text-amber-700 font-bold uppercase tracking-tighter bg-amber-50 px-2 py-1 rounded border border-amber-100" title="O banco atingiu a cota diária gratuita. O app salvou tudo localmente e irá sincronizar quando reiniciar à meia-noite.">
+                    <span className="relative flex h-2 w-2">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
+                    </span>
+                    Cache Ativo (Offline)
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-1.5 text-[10px] text-slate-500 font-bold uppercase tracking-tighter bg-slate-100 px-2 py-1 rounded border border-slate-200" title="Você está navegando em modo offline. Suas alterações estão salvas no cache do navegador.">
+                    <span className="w-1.5 h-1.5 rounded-full bg-slate-400" />
+                    Modo Offline
+                  </div>
+                )
+              ) : (
+                <div className="hidden lg:flex items-center gap-1.5 text-[10px] text-slate-400 font-bold uppercase tracking-tighter bg-slate-50 px-2 py-1 rounded border border-slate-100">
+                  <Save size={10} />
+                  Sincronizado
+                </div>
+              )}
              <button 
               onClick={() => setIsBibleSearchOpen(!isBibleSearchOpen)}
               className={cn(
@@ -1259,6 +1370,36 @@ export default function App() {
         {/* Editor, Series, Agenda or Library Body */}
         <div className="flex-1 overflow-y-auto overflow-x-hidden px-4 md:px-12 py-6 bg-slate-50">
           <div className="max-w-[1200px] mx-auto pb-24 md:pb-12 h-full">
+            {sermonLoadError && (
+              <motion.div 
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 font-sans shadow-sm"
+              >
+                <div className="flex items-start sm:items-center gap-3">
+                  <div className="p-2 bg-amber-100 rounded-xl text-amber-700 shrink-0">
+                    <span className="relative flex h-3 w-3">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-3 w-3 bg-amber-500"></span>
+                    </span>
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-black text-amber-800 tracking-tight">Modo de Segurança Ativo (Cache Offline)</h4>
+                    <p className="text-xs text-amber-600 mt-0.5 font-semibold leading-relaxed">
+                      {sermonLoadError === 'quota_exceeded' 
+                        ? 'O servidor atingiu temporariamente o limite de acessos gratuitos diários. Mas fique tranquilo! Todos os seus sermões estão completamente seguros no seu navegador. Você pode ler, editar e criar novos sermões normalmente!' 
+                        : 'O sistema está rodando em modo offline. Seus sermões salvos estão seguros e disponíveis localmente no seu navegador. Continue escrevendo normalmente!'}
+                    </p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => window.location.reload()}
+                  className="px-4 py-1.5 bg-amber-600 text-white rounded-lg font-bold text-[10px] uppercase tracking-wider hover:bg-amber-700 transition-all self-end sm:self-auto shrink-0 shadow-sm"
+                >
+                  Atualizar
+                </button>
+              </motion.div>
+            )}
             {currentView === 'dashboard' ? (
               <Dashboard
                 sermons={sermons}
