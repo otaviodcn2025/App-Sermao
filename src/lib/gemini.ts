@@ -15,7 +15,42 @@ export function getAIClient() {
       console.warn("API Key não configurada. A IA não funcionará até que a chave seja adicionada.");
       return null;
     }
-    aiClient = new GoogleGenAI({ apiKey });
+    
+    const client = new GoogleGenAI({ apiKey });
+    
+    // Wrap generateContent to support exponential backoff on 503 / high demand errors
+    const originalGenerateContent = client.models.generateContent.bind(client.models);
+    (client.models as any).generateContent = async function (args: any, ...rest: any[]) {
+      let retries = 3;
+      let delay = 1500;
+      while (true) {
+        try {
+          return await originalGenerateContent(args, ...rest);
+        } catch (error: any) {
+          const errorStr = error ? (typeof error === 'object' ? JSON.stringify(error) : String(error)) : '';
+          const is503 = error?.status === 503 || 
+                        error?.code === 503 || 
+                        errorStr.includes('503') ||
+                        errorStr.includes('high demand') ||
+                        errorStr.includes('UNAVAILABLE') ||
+                        errorStr.includes('overloaded');
+          
+          if (is503 && retries > 0) {
+            console.warn(`Gemini API 503 (high demand) detectado. Tentando novamente em ${delay}ms... (${retries} tentativas restantes)`);
+            await new Promise(resolve => setTimeout(resolve, delay));
+            retries--;
+            delay *= 2;
+          } else {
+            if (is503) {
+              throw new Error("O servidor da IA está temporariamente sobrecarregado devido à alta demanda. Por favor, tente novamente em alguns instantes.");
+            }
+            throw error;
+          }
+        }
+      }
+    };
+    
+    aiClient = client;
   }
   return aiClient;
 }
