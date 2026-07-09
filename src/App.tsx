@@ -275,29 +275,31 @@ export default function App() {
         id: doc.id
       } as Sermon));
       setSermons(sermonList);
-      
-      // Select first sermon if none selected and list not empty
-      if (!currentSermonId && sermonList.length > 0) {
-        // Find if we had one in local memory that still exists
-        let lastSelected = null;
-        try {
-          lastSelected = localStorage.getItem(`last-sermon-${user.uid}`);
-        } catch (e) {
-          console.warn("LocalStorage indisponível");
-        }
-        
-        if (lastSelected && sermonList.some(s => s.id === lastSelected)) {
-          setCurrentSermonId(lastSelected);
-        } else {
-          setCurrentSermonId(sermonList[0].id);
-        }
-      }
     }, (error) => {
       handleFirestoreError(error, OperationType.LIST, path);
     });
 
     return () => unsubscribe();
-  }, [user, currentSermonId]);
+  }, [user]);
+
+  // Handle auto-selecting the first or last selected sermon when list loads
+  useEffect(() => {
+    if (!user) return;
+    if (!currentSermonId && sermons.length > 0) {
+      let lastSelected = null;
+      try {
+        lastSelected = localStorage.getItem(`last-sermon-${user.uid}`);
+      } catch (e) {
+        console.warn("LocalStorage indisponível");
+      }
+      
+      if (lastSelected && sermons.some(s => s.id === lastSelected)) {
+        setCurrentSermonId(lastSelected);
+      } else {
+        setCurrentSermonId(sermons[0].id);
+      }
+    }
+  }, [sermons, currentSermonId, user]);
 
   // Sync Resources (Library) from Firestore
   useEffect(() => {

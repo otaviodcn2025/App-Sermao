@@ -256,6 +256,13 @@ export default function Editor({ content, onChange, onAiAction, title, onTitleCh
     }
   }, [content, editor]);
 
+  // Unconditionally update content when sermonId changes to prevent legacy text retention or lags
+  useEffect(() => {
+    if (editor && sermonId) {
+      editor.commands.setContent(content);
+    }
+  }, [sermonId, editor]);
+
   // Update editable state
   useEffect(() => {
     if (editor) {

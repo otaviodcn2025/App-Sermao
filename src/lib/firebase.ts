@@ -9,6 +9,17 @@ const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app, (firebaseConfig as any).firestoreDatabaseId);
 export const auth = getAuth(app);
 
+// Enable IndexedDB offline persistence for high performance and offline capability
+if (typeof window !== 'undefined') {
+  enableIndexedDbPersistence(db).catch((err) => {
+    if (err.code === 'failed-precondition') {
+      console.warn('Firestore persistence failed-precondition (multiple tabs open)');
+    } else if (err.code === 'unimplemented') {
+      console.warn('Firestore persistence unimplemented');
+    }
+  });
+}
+
 export enum OperationType {
   CREATE = 'create',
   UPDATE = 'update',
