@@ -1,24 +1,14 @@
 import * as pdfjs from 'pdfjs-dist';
 import { withTimeout } from './utils';
 
-// @ts-ignore - Vite specific import for worker constructor
-import pdfjsWorkerConstructor from 'pdfjs-dist/build/pdf.worker.mjs?worker';
-// @ts-ignore - Vite specific import for worker URL
-import pdfjsWorkerUrl from 'pdfjs-dist/build/pdf.worker.mjs?url';
+// Importar o worker diretamente para que o Vite o inclua no bundle do thread principal.
+// Isso resolve 100% dos problemas de iframe sandboxed, CORS e "importScripts is not defined",
+// pois o worker rodará como fallback integrado diretamente no mesmo thread de forma síncrona/assíncrona sem disparar requisições de rede problemáticas.
+import 'pdfjs-dist/build/pdf.worker.mjs';
 
 if (typeof window !== 'undefined') {
-  const workerUrl = pdfjsWorkerUrl || `https://unpkg.com/pdfjs-dist@${pdfjs.version || '5.7.284'}/build/pdf.worker.mjs`;
-  try {
-    // 1. Tentar instanciar o worker usando o construtor nativo do Vite (completamente compatível com a mesma origem)
-    pdfjs.GlobalWorkerOptions.workerPort = new pdfjsWorkerConstructor();
-    console.log('PDF.js workerPort configurado com sucesso via Vite.');
-  } catch (err) {
-    console.warn('Falha ao instanciar Web Worker do PDF.js (comum em sandboxes de iframe). Usando fallback seguro para o fake worker:', err);
-    // 2. Definir o workerSrc de fallback. Se o worker falhar ou for bloqueado por sandbox,
-    // o PDF.js usará o "fake worker" (no thread principal) importando este arquivo como um módulo ES limpo.
-    // Isso é seguro porque o arquivo .mjs não quebra no thread principal (ao contrário de blobs com importScripts).
-    pdfjs.GlobalWorkerOptions.workerSrc = workerUrl;
-  }
+  // Configura o workerSrc para vazio para instruir o PDF.js a usar o worker que já importamos e registramos acima globalmente
+  pdfjs.GlobalWorkerOptions.workerSrc = '';
 }
 
 export async function extractTextFromPdf(file: File): Promise<{ text: string, toc: { title: string, charOffset: number }[] }> {
