@@ -20,20 +20,25 @@ import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '@/src/lib/utils';
 import { Resource } from '@/src/types';
 import * as pdfjs from 'pdfjs-dist';
+// @ts-ignore - Vite specific import for worker constructor
+import pdfjsWorkerConstructor from 'pdfjs-dist/build/pdf.worker.mjs?worker';
 // @ts-ignore - Vite specific import for worker URL
-import pdfjsWorker from 'pdfjs-dist/build/pdf.worker.mjs?url';
+import pdfjsWorkerUrl from 'pdfjs-dist/build/pdf.worker.mjs?url';
 import { db, handleFirestoreError, OperationType } from '@/src/lib/firebase';
 import { doc, updateDoc } from 'firebase/firestore';
 
-// Configuração do Worker do PDF.js com fallback CDN robusto e seguro contra sandbox
+// Configuração do Worker do PDF.js com fallback robusto e seguro contra sandbox
 if (typeof window !== 'undefined') {
-  const workerUrl = pdfjsWorker || `https://unpkg.com/pdfjs-dist@${pdfjs.version || '5.7.284'}/build/pdf.worker.mjs`;
+  const workerUrl = pdfjsWorkerUrl || `https://unpkg.com/pdfjs-dist@${pdfjs.version || '5.7.284'}/build/pdf.worker.mjs`;
   try {
-    const blobCode = `importScripts(${JSON.stringify(workerUrl)});`;
-    const blob = new Blob([blobCode], { type: 'application/javascript' });
-    pdfjs.GlobalWorkerOptions.workerSrc = URL.createObjectURL(blob);
+    // 1. Tentar instanciar o worker usando o construtor nativo do Vite (completamente compatível com a mesma origem)
+    pdfjs.GlobalWorkerOptions.workerPort = new pdfjsWorkerConstructor();
+    console.log('PDF.js workerPort configurado com sucesso via Vite na Biblioteca.');
   } catch (err) {
-    console.error('Failed to set PDF.js safe worker inside Library:', err);
+    console.warn('Falha ao instanciar Web Worker do PDF.js na Biblioteca (comum em sandboxes de iframe). Usando fallback seguro para o fake worker:', err);
+    // 2. Definir o workerSrc de fallback. Se o worker falhar ou for bloqueado por sandbox,
+    // o PDF.js usará o "fake worker" (no thread principal) importando este arquivo como um módulo ES limpo.
+    // Isso é seguro porque o arquivo .mjs não quebra no thread principal (ao contrário de blobs com importScripts).
     pdfjs.GlobalWorkerOptions.workerSrc = workerUrl;
   }
 }
