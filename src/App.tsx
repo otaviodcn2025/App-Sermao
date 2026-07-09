@@ -190,10 +190,13 @@ export default function App() {
           // Fetch profile
           const userRef = doc(db, 'users', currentUser.uid);
           let profileData: UserProfile | null = null;
+          let docExists = false;
+          let isOffline = false;
           
           try {
             const userSnap = await getDoc(userRef);
             if (userSnap.exists()) {
+              docExists = true;
               profileData = userSnap.data() as UserProfile;
               // Salva no localStorage para uso offline posterior
               try {
@@ -203,6 +206,7 @@ export default function App() {
               }
             }
           } catch (docErr: any) {
+            isOffline = true;
             console.warn('Erro ao carregar perfil do Firestore (possivelmente offline):', docErr);
             // Tenta obter do localStorage
             try {
@@ -228,12 +232,22 @@ export default function App() {
             };
           }
 
-          // Auto-fix master admin profile if needed
+          // Se o perfil não existe no Firestore e não estamos offline, salvamos ele no banco agora!
+          if (!docExists && !isOffline) {
+            try {
+              await setDoc(userRef, profileData);
+              console.log('Documento de perfil inicial criado com sucesso no Firestore.');
+            } catch (createErr) {
+              console.warn('Não foi possível registrar o perfil do usuário no Firestore (offline?):', createErr);
+            }
+          }
+
+          // Auto-fix master admin profile if needed (usando setDoc com merge para garantir que funciona)
           if (currentUser.email === 'pastorotavio@gmail.com' && (profileData.role !== 'admin' || !profileData.approved)) {
             console.log('Detectado admin mestre sem permissões completas, corrigindo...');
             const updatedData: UserProfile = { ...profileData, role: 'admin', approved: true };
             try {
-              await updateDoc(userRef, { role: 'admin', approved: true });
+              await setDoc(userRef, { role: 'admin', approved: true }, { merge: true });
             } catch (upErr) {
               console.warn('Não foi possível atualizar o perfil de admin no Firestore (offline?):', upErr);
             }
