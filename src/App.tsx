@@ -95,6 +95,7 @@ export default function App() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false); // Start false
   const [isBibleSearchOpen, setIsBibleSearchOpen] = useState(false); 
   const [isAiLoading, setIsAiLoading] = useState(false);
+  const [isOutlineGenerating, setIsOutlineGenerating] = useState(false);
   const [aiResponse, setAiResponse] = useState<string | null>(null);
   const [aiActionType, setAiActionType] = useState<string | null>(null);
   const [isAiModalOpen, setIsAiModalOpen] = useState(false);
@@ -718,7 +719,7 @@ export default function App() {
   };
 
   const handleGenerateOutline = async (theme: string, baseText: string, fileContent: string, userIdeias: string, style: 'traditional' | 'practical' | 'historical') => {
-    setIsAiLoading(true);
+    setIsOutlineGenerating(true);
     setAiResponse(null);
     try {
       const libraryContext = resources.map(r => r.extractedText).filter(Boolean).join('\n\n---\n\n').substring(0, 20000);
@@ -734,7 +735,7 @@ export default function App() {
       console.error(err);
       alert('Erro ao gerar esboço: ' + (err instanceof Error ? err.message : 'Erro desconhecido'));
     } finally {
-      setIsAiLoading(false);
+      setIsOutlineGenerating(false);
     }
   };
 
@@ -984,7 +985,7 @@ export default function App() {
           <AiOutlineModal
             onClose={() => setIsAiModalOpen(false)}
             onGenerate={handleGenerateOutline}
-            isLoading={isAiLoading}
+            isLoading={isOutlineGenerating}
           />
         )}
       </AnimatePresence>
