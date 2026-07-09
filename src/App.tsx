@@ -1457,7 +1457,7 @@ export default function App() {
                 resources={resources}
                 onUpload={handleResourceUpload}
                 onDelete={handleResourceDelete}
-                userApproved={userProfile?.approved || false}
+                userApproved={userProfile?.role === 'admin' || userProfile?.approved || false}
                 searchResults={searchResults}
               />
             ) : currentView === 'series' ? (
