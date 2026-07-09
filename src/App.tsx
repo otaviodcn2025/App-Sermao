@@ -188,36 +188,60 @@ export default function App() {
           setUser(currentUser);
           // Fetch profile
           const userRef = doc(db, 'users', currentUser.uid);
-          const userSnap = await getDoc(userRef);
+          let profileData: UserProfile | null = null;
           
-          if (userSnap.exists()) {
-            const data = userSnap.data() as UserProfile;
-            
-            // Auto-fix master admin profile if needed
-            if (currentUser.email === 'pastorotavio@gmail.com' && (data.role !== 'admin' || !data.approved)) {
-              console.log('Detectado admin mestre sem permissões completas, corrigindo...');
-              const updatedData = { ...data, role: 'admin' as const, approved: true };
-              await updateDoc(userRef, { role: 'admin', approved: true });
-              setUserProfile(updatedData);
-            } else {
-              setUserProfile(data);
+          try {
+            const userSnap = await getDoc(userRef);
+            if (userSnap.exists()) {
+              profileData = userSnap.data() as UserProfile;
+              // Salva no localStorage para uso offline posterior
+              try {
+                localStorage.setItem(`user_profile_${currentUser.uid}`, JSON.stringify(profileData));
+              } catch (storageErr) {
+                console.warn('Não foi possível salvar o perfil no localStorage:', storageErr);
+              }
             }
-          } else if (currentUser.email === 'pastorotavio@gmail.com') {
-            // Creation logic for master admin if not exists in Firestore
-            const adminProfile: UserProfile = {
+          } catch (docErr: any) {
+            console.warn('Erro ao carregar perfil do Firestore (possivelmente offline):', docErr);
+            // Tenta obter do localStorage
+            try {
+              const cached = localStorage.getItem(`user_profile_${currentUser.uid}`);
+              if (cached) {
+                profileData = JSON.parse(cached);
+              }
+            } catch (cacheErr) {
+              console.error('Erro ao fazer parse do perfil cacheado:', cacheErr);
+            }
+          }
+
+          // Se não há dados de perfil (primeiro acesso offline, ou cache limpo), cria fallback temporário
+          if (!profileData) {
+            const isDefaultAdmin = currentUser.email === 'pastorotavio@gmail.com';
+            profileData = {
               uid: currentUser.uid,
-              name: currentUser.displayName || 'Pastor Otávio',
-              email: currentUser.email!,
-              role: 'admin',
-              approved: true,
+              name: currentUser.displayName || (isDefaultAdmin ? 'Pastor Otávio' : 'Usuário'),
+              email: currentUser.email || '',
+              role: isDefaultAdmin ? 'admin' : 'user',
+              approved: isDefaultAdmin,
               createdAt: Date.now()
             };
-            await setDoc(userRef, adminProfile);
-            setUserProfile(adminProfile);
+          }
+
+          // Auto-fix master admin profile if needed
+          if (currentUser.email === 'pastorotavio@gmail.com' && (profileData.role !== 'admin' || !profileData.approved)) {
+            console.log('Detectado admin mestre sem permissões completas, corrigindo...');
+            const updatedData: UserProfile = { ...profileData, role: 'admin', approved: true };
+            try {
+              await updateDoc(userRef, { role: 'admin', approved: true });
+            } catch (upErr) {
+              console.warn('Não foi possível atualizar o perfil de admin no Firestore (offline?):', upErr);
+            }
+            setUserProfile(updatedData);
+            try {
+              localStorage.setItem(`user_profile_${currentUser.uid}`, JSON.stringify(updatedData));
+            } catch (err) {}
           } else {
-            // User exists in Auth but not in Firestore yet
-            console.warn('Usuário autenticado sem perfil no Firestore.');
-            setUserProfile(null);
+            setUserProfile(profileData);
           }
         } else {
           setUser(null);
