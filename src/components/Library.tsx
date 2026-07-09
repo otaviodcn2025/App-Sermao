@@ -14,7 +14,8 @@ import {
   ChevronLeft,
   Maximize2,
   Bookmark,
-  Tag
+  Tag,
+  Sparkles
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '@/src/lib/utils';
@@ -51,6 +52,7 @@ interface LibraryProps {
   onDelete: (id: string) => Promise<void>;
   userApproved: boolean;
   searchResults?: string[] | null;
+  onGenerateSummary?: (resourceId: string) => Promise<void>;
 }
 
 // Componente de Capa de Livro Gerada Dinamicamente
@@ -115,11 +117,12 @@ function BookCover({ title, type }: { title: string, type: 'pdf' | 'epub' | 'lin
   );
 }
 
-export default function Library({ resources, onUpload, onDelete, userApproved, searchResults }: LibraryProps) {
+export default function Library({ resources, onUpload, onDelete, userApproved, searchResults, onGenerateSummary }: LibraryProps) {
   const [isUploading, setIsUploading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedResource, setSelectedResource] = useState<Resource | null>(null);
   const [isReadingMode, setIsReadingMode] = useState(false);
+  const [isGeneratingLocal, setIsGeneratingLocal] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
 
@@ -238,7 +241,7 @@ export default function Library({ resources, onUpload, onDelete, userApproved, s
         </div>
         <div className="flex-1 overflow-y-auto p-6 lg:p-12">
           <div className="max-w-3xl mx-auto prose prose-slate">
-            {currentResource.summary && (
+            {currentResource.summary ? (
               <div className="mb-12 p-6 bg-orange-50 rounded-3xl border border-orange-100">
                 <div className="flex items-center gap-2 mb-4 text-orange-800">
                   <div className="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center">
@@ -249,6 +252,42 @@ export default function Library({ resources, onUpload, onDelete, userApproved, s
                 <div className="text-slate-700 text-sm leading-relaxed whitespace-pre-wrap italic">
                   {currentResource.summary}
                 </div>
+              </div>
+            ) : (
+              <div className="mb-12 p-8 bg-slate-50 rounded-3xl border border-slate-200 border-dashed text-center">
+                <div className="w-12 h-12 bg-orange-100 text-orange-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Sparkles size={24} />
+                </div>
+                <h3 className="font-black text-slate-800 text-base mb-2">Resumo Inteligente com IA</h3>
+                <p className="text-sm text-slate-500 max-w-md mx-auto mb-6">
+                  Gostaria de gerar um resumo teológico, temas principais e utilidades homiléticas deste livro usando Inteligência Artificial?
+                </p>
+                <button
+                  onClick={async () => {
+                    if (onGenerateSummary) {
+                      setIsGeneratingLocal(true);
+                      try {
+                        await onGenerateSummary(currentResource.id);
+                      } finally {
+                        setIsGeneratingLocal(false);
+                      }
+                    }
+                  }}
+                  disabled={isGeneratingLocal || !userApproved}
+                  className="inline-flex items-center gap-2 px-6 py-3 bg-orange-600 hover:bg-orange-700 text-white rounded-xl text-xs font-black uppercase tracking-widest transition-all disabled:opacity-50"
+                >
+                  {isGeneratingLocal ? (
+                    <>
+                      <Loader2 size={14} className="animate-spin" />
+                      Gerando Resumo...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles size={14} />
+                      Gerar Resumo com IA
+                    </>
+                  )}
+                </button>
               </div>
             )}
 

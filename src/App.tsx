@@ -768,32 +768,6 @@ export default function App() {
 
       const { text, toc } = extractionResult;
 
-      let summary = '';
-      let tags: string[] = [];
-
-      try {
-        console.log('Fase de extração terminada. Iniciando resumo com IA...');
-        summary = await withTimeout(summarizeResource(file.name, text), 35000, "O resumo da IA demorou muito.");
-        
-        // Auto-tagging with IA
-        console.log('Iniciando auto-tagging...');
-        const tagsPrompt = `A partir deste resumo, sugira 3 a 5 etiquetas (tags) curtas de temas teológicos separadas por vírgula (ex: Fé, Graça, Salvação). Retorne apenas as palavras separadas por vírgula: "${summary.substring(0, 500)}"`;
-        const ai = getAIClient();
-        if (ai) {
-          try {
-            const res = await ai.models.generateContent({ model: DEFAULT_MODEL, contents: tagsPrompt });
-            const textRes = res.text || '';
-            tags = textRes.split(',').map(t => t.trim().replace(/^#/, '')).filter(Boolean);
-          } catch (e) {
-            console.error("Auto-tagging error:", e);
-          }
-        }
-      } catch (aiErr) {
-        console.warn("Falha ao gerar resumo/etiquetas com IA (não bloqueante):", aiErr);
-        summary = "O resumo inteligente não pôde ser gerado automaticamente. Você ainda pode ler o conteúdo completo do livro.";
-        tags = ['Teologia'];
-      }
-
       console.log('Salvando no Firestore...');
       const resourceRef = collection(db, 'resources');
       const newDoc = doc(resourceRef);
@@ -804,8 +778,8 @@ export default function App() {
         title: file.name.replace(/\.(pdf|epub)$/i, ''),
         type: isPdf ? 'pdf' : 'epub',
         extractedText: text,
-        summary: summary,
-        tags: tags,
+        summary: '',
+        tags: ['Teologia'],
         toc: toc,
         createdAt: Date.now()
       };
@@ -819,6 +793,42 @@ export default function App() {
       handleFirestoreError(err, OperationType.CREATE, 'resources');
     } finally {
       setIsAiLoading(false);
+    }
+  };
+
+  const handleGenerateResourceSummary = async (resourceId: string) => {
+    if (!user || !db) return;
+    const resource = resources.find(r => r.id === resourceId);
+    if (!resource) return;
+
+    try {
+      console.log('Iniciando resumo com IA sob demanda...');
+      const summary = await withTimeout(summarizeResource(resource.title, resource.extractedText), 35000, "O resumo da IA demorou muito.");
+      
+      // Auto-tagging with IA
+      console.log('Iniciando auto-tagging...');
+      let tags: string[] = ['Teologia'];
+      const tagsPrompt = `A partir deste resumo, sugira 3 a 5 etiquetas (tags) curtas de temas teológicos separadas por vírgula (ex: Fé, Graça, Salvação). Retorne apenas as palavras separadas por vírgula: "${summary.substring(0, 500)}"`;
+      const ai = getAIClient();
+      if (ai) {
+        try {
+          const res = await ai.models.generateContent({ model: DEFAULT_MODEL, contents: tagsPrompt });
+          const textRes = res.text || '';
+          tags = textRes.split(',').map(t => t.trim().replace(/^#/, '')).filter(Boolean);
+        } catch (e) {
+          console.error("Auto-tagging error:", e);
+        }
+      }
+
+      const resourceRef = doc(db, 'resources', resourceId);
+      await updateDoc(resourceRef, {
+        summary: summary,
+        tags: tags
+      });
+      console.log('Resumo gerado com sucesso!');
+    } catch (err) {
+      console.error('Falha ao gerar resumo:', err);
+      alert('Erro ao gerar resumo: ' + (err instanceof Error ? err.message : 'Erro desconhecido'));
     }
   };
 
@@ -1459,6 +1469,7 @@ export default function App() {
                 onDelete={handleResourceDelete}
                 userApproved={userProfile?.role === 'admin' || userProfile?.approved || false}
                 searchResults={searchResults}
+                onGenerateSummary={handleGenerateResourceSummary}
               />
             ) : currentView === 'series' ? (
               <SeriesPanel
