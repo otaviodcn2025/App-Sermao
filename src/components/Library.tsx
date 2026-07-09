@@ -25,9 +25,17 @@ import pdfjsWorker from 'pdfjs-dist/build/pdf.worker.mjs?url';
 import { db, handleFirestoreError, OperationType } from '@/src/lib/firebase';
 import { doc, updateDoc } from 'firebase/firestore';
 
-// Configuração do Worker do PDF.js com fallback CDN robusto
+// Configuração do Worker do PDF.js com fallback CDN robusto e seguro contra sandbox
 if (typeof window !== 'undefined') {
-  pdfjs.GlobalWorkerOptions.workerSrc = pdfjsWorker || `https://unpkg.com/pdfjs-dist@${pdfjs.version || '5.7.284'}/build/pdf.worker.mjs`;
+  const workerUrl = pdfjsWorker || `https://unpkg.com/pdfjs-dist@${pdfjs.version || '5.7.284'}/build/pdf.worker.mjs`;
+  try {
+    const blobCode = `importScripts(${JSON.stringify(workerUrl)});`;
+    const blob = new Blob([blobCode], { type: 'application/javascript' });
+    pdfjs.GlobalWorkerOptions.workerSrc = URL.createObjectURL(blob);
+  } catch (err) {
+    console.error('Failed to set PDF.js safe worker inside Library:', err);
+    pdfjs.GlobalWorkerOptions.workerSrc = workerUrl;
+  }
 }
 
 import Reader from './Reader';

@@ -6,7 +6,15 @@ import { withTimeout } from './utils';
 import pdfjsWorker from 'pdfjs-dist/build/pdf.worker.mjs?url';
 
 if (typeof window !== 'undefined') {
-  pdfjs.GlobalWorkerOptions.workerSrc = pdfjsWorker || `https://unpkg.com/pdfjs-dist@${pdfjs.version || '5.7.284'}/build/pdf.worker.mjs`;
+  const workerUrl = pdfjsWorker || `https://unpkg.com/pdfjs-dist@${pdfjs.version || '5.7.284'}/build/pdf.worker.mjs`;
+  try {
+    const blobCode = `importScripts(${JSON.stringify(workerUrl)});`;
+    const blob = new Blob([blobCode], { type: 'application/javascript' });
+    pdfjs.GlobalWorkerOptions.workerSrc = URL.createObjectURL(blob);
+  } catch (err) {
+    console.error('Failed to set PDF.js safe worker:', err);
+    pdfjs.GlobalWorkerOptions.workerSrc = workerUrl;
+  }
 }
 
 export async function extractTextFromPdf(file: File): Promise<{ text: string, toc: { title: string, charOffset: number }[] }> {
