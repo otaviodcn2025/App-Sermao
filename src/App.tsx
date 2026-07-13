@@ -40,6 +40,7 @@ import { Sermon, UserProfile, Resource, Series, Slide, AgendaEntry } from './typ
 import { cn, formatDate, parseSlides, withTimeout, parseMarkdownToHtml } from './lib/utils';
 import { 
   generateSermonOutline, 
+  generateSermonOutlineStream,
   analyzeVerse, 
   generateSlideDescriptions, 
   summarizeResource,
@@ -109,6 +110,7 @@ export default function App() {
   const [isSlideGeneratorOpen, setIsSlideGeneratorOpen] = useState(false);
   const [generatedSlides, setGeneratedSlides] = useState<Slide[]>([]);
   const [pendingInsert, setPendingInsert] = useState<{ content: string; id: string } | null>(null);
+  const [outlineTheme, setOutlineTheme] = useState<string>('');
 
   // Initialize responsive state
   useEffect(() => {
@@ -533,7 +535,7 @@ export default function App() {
     }
   };
 
-  const createNewSermon = async (seriesId?: string) => {
+  const createNewSermon = async (seriesId?: string, initialTitle?: string, initialContent?: string) => {
     if (!user || !db) return;
     
     const collectionRef = collection(db, 'sermons');
@@ -544,8 +546,8 @@ export default function App() {
       const newSermon = {
         id: newDocRef.id,
         userId: user.uid,
-        title: 'Novo Sermão',
-        content: '<h1>Título do Sermão</h1><p>Comece aqui seu rascunho ou use o botão <strong>Gerar Esboço com IA</strong> acima para estruturar sua mensagem.</p>',
+        title: initialTitle || 'Novo Sermão',
+        content: initialContent || '<h1>Título do Sermão</h1><p>Comece aqui seu rascunho ou use o botão <strong>Gerar Esboço com IA</strong> acima para estruturar sua mensagem.</p>',
         seriesId: seriesId || null,
         createdAt: now,
         updatedAt: now,
@@ -742,23 +744,29 @@ export default function App() {
   };
 
   const handleGenerateOutline = async (theme: string, baseText: string, fileContent: string, userIdeias: string, style: 'traditional' | 'practical' | 'historical') => {
-    setIsOutlineGenerating(true);
-    setAiResponse(null);
+    setOutlineTheme(theme);
+    setAiResponse(''); // Open slide-up panel immediately by initializing with non-null string
+    setAiActionType('outline');
+    setIsAiModalOpen(false); // Close modal immediately so user sees streaming in real-time
+    setIsAiLoading(true);
+
     try {
       const libraryContext = resources.map(r => r.extractedText).filter(Boolean).join('\n\n---\n\n').substring(0, 20000);
       const fullContext = `${fileContent}\n\nRECURSOS DA BIBLIOTECA:\n${libraryContext}`;
       
-      const outline = await generateSermonOutline(theme, baseText, fullContext, userIdeias, style);
-      if (outline) {
-        setAiActionType('outline');
-        setAiResponse(outline);
-        setIsAiModalOpen(false);
+      let accumulatedText = '';
+      const stream = generateSermonOutlineStream(theme, baseText, fullContext, userIdeias, style);
+      for await (const chunk of stream) {
+        accumulatedText += chunk;
+        setAiResponse(accumulatedText);
       }
     } catch (err) {
       console.error(err);
-      alert('Erro ao gerar esboço: ' + (err instanceof Error ? err.message : 'Erro desconhecido'));
+      alert('Erro ao gerar esboço com IA: ' + (err instanceof Error ? err.message : 'Erro desconhecido'));
+      setAiResponse(null);
+      setAiActionType(null);
     } finally {
-      setIsOutlineGenerating(false);
+      setIsAiLoading(false);
     }
   };
 
@@ -1595,7 +1603,7 @@ export default function App() {
 
         {/* AI Response Panel (Slide-up) */}
         <AnimatePresence>
-          {aiResponse && (
+          {aiResponse !== null && (
             <motion.div 
               initial={{ y: "100%" }}
               animate={{ y: 0 }}
@@ -1618,7 +1626,14 @@ export default function App() {
                 </button>
               </div>
               <div className="flex-1 overflow-y-auto p-6 prose prose-sm max-w-none prose-slate">
-                <div dangerouslySetInnerHTML={{ __html: parseMarkdownToHtml(aiResponse) }} />
+                {aiResponse === "" ? (
+                  <div className="flex flex-col items-center justify-center py-12 space-y-3">
+                    <Loader2 size={32} className="animate-spin text-orange-600" />
+                    <p className="text-sm font-bold text-slate-500 animate-pulse">A IA está gerando o esboço passo a passo...</p>
+                  </div>
+                ) : (
+                  <div dangerouslySetInnerHTML={{ __html: parseMarkdownToHtml(aiResponse) }} />
+                )}
               </div>
               <div className="p-4 border-t border-slate-100 bg-slate-50 flex justify-between gap-4">
                  {(aiActionType === 'slides' || (aiResponse && aiResponse.includes('Slide 1'))) && (
@@ -1638,17 +1653,24 @@ export default function App() {
                    </button>
                  )}
                  <button 
-                  onClick={() => {
-                    const newContent = (currentSermon?.content || '') + `<hr/><div class="ai-suggestion">${parseMarkdownToHtml(aiResponse)}</div>`;
-                    if (currentSermon && currentView === 'editor') {
-                      setPendingInsert({ content: `<hr/><div class="ai-suggestion">${parseMarkdownToHtml(aiResponse)}</div>`, id: Date.now().toString() });
+                  disabled={isAiLoading && !aiResponse}
+                  onClick={async () => {
+                    const cleanHtml = `<hr/>${parseMarkdownToHtml(aiResponse)}`;
+                    if (currentSermon) {
+                      setCurrentView('editor');
+                      setMobileTab('editor');
+                      setPendingInsert({ content: cleanHtml, id: Date.now().toString() });
                     } else {
-                      updateSermon({ content: newContent });
+                      const newTitle = outlineTheme || 'Esboço Inteligente';
+                      await createNewSermon(undefined, newTitle, cleanHtml);
                     }
                     setAiResponse(null);
                     setAiActionType(null);
                   }}
-                  className="bg-violet-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-violet-700 transition-colors shadow-sm ml-auto"
+                  className={cn(
+                    "px-4 py-2 rounded-lg text-sm font-semibold transition-colors shadow-sm ml-auto",
+                    (isAiLoading && !aiResponse) ? "bg-slate-200 text-slate-400 cursor-not-allowed" : "bg-violet-600 hover:bg-violet-700 text-white"
+                  )}
                 >
                   Adicionar ao Sermão
                 </button>

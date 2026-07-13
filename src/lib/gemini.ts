@@ -77,6 +77,54 @@ Responda sempre em Português (Brasil) de forma clara, inspiradora, respeitosa e
 
 export const DEFAULT_MODEL = "gemini-3.5-flash"; 
 
+export async function* generateSermonOutlineStream(topic: string, baseText?: string, context?: string, userPrompt?: string, style: 'traditional' | 'practical' | 'historical' = 'traditional') {
+  const ai = getAIClient();
+  if (!ai) throw new Error("IA não disponível. Verifique se a Chave de API foi configurada corretamente.");
+  
+  const styleInstructions = {
+    traditional: "Siga uma estrutura homilética clássica com introdução, corpo e conclusão.",
+    practical: "Foque intensamente em aplicações práticas para o dia a dia e desafios contemporâneos da igreja.",
+    historical: "Aprofunde-se no contexto histórico e na perspectiva de desenvolvimento da doutrina ao longo do tempo."
+  };
+
+  const prompt = `Gere um esboço estruturado e inspirador para um sermão sobre o tema "${topic}"${baseText ? ` baseado no texto bíblico: ${baseText}` : ''}.
+  
+  ESTILO DESEJADO: ${style.toUpperCase()}
+  ${styleInstructions[style]}
+
+  ${userPrompt ? `DIRECIONAMENTO ESPECÍFICO DO USUÁRIO:
+  ---
+  ${userPrompt}
+  ---
+  ` : ''}
+
+  ${context ? `CONTEXTO ADICIONAL (BIBLIOTECA):
+  ---
+  ${context}
+  ---` : ''}
+
+  O esboço deve incluir:
+  - Título Sugerido (Impactante)
+  - Introdução (Gancho forte)
+  - Exposição Bíblica (3 a 4 pontos principais com explicações)
+  - Aplicação Prática
+  - Conclusão (Resumo e apelo)
+  
+  Formate em Markdown claro.`;
+
+  const responseStream = await ai.models.generateContentStream({
+    model: DEFAULT_MODEL,
+    contents: prompt,
+    config: {
+      systemInstruction: SYSTEM_INSTRUCTION,
+    }
+  });
+
+  for await (const chunk of responseStream) {
+    yield chunk.text || "";
+  }
+}
+
 export async function generateSermonOutline(topic: string, baseText?: string, context?: string, userPrompt?: string, style: 'traditional' | 'practical' | 'historical' = 'traditional') {
   try {
     const ai = getAIClient();

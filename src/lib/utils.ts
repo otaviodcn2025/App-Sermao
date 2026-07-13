@@ -93,16 +93,22 @@ export function parseMarkdownToHtml(markdown: string): string {
   // List items starting with '-' or '*'
   html = html.replace(/^\s*[-*]\s+(.*?)$/gm, '<li class="ml-4 list-disc pl-1 text-slate-600 my-1">$1</li>');
   
+  // Wrap consecutive list items in a ul
+  html = html.replace(/((?:<li[^>]*>.*?<\/li>[\s\r\n]*)+)/g, '<ul class="list-disc pl-5 my-2">$1</ul>');
+
   // Blockquotes starting with '>'
   html = html.replace(/^\s*>\s+(.*?)$/gm, '<blockquote class="border-l-4 border-violet-500 pl-4 py-1 my-3 bg-violet-50/50 rounded-r text-slate-700 italic">$1</blockquote>');
   
   // Line breaks
   html = html.replace(/\n/g, '<br/>');
   
-  // Clean contiguous duplicates or breaks from list and headers
-  html = html.replace(/(<br\/>)+<li/g, '<li');
-  html = html.replace(/<\/li>(<br\/>)+/g, '</li>');
-  html = html.replace(/(<br\/>)+<h/g, '<h');
+  // Clean up breaks and whitespace inside lists and headers for Tiptap stability
+  html = html.replace(/<ul[^>]*>(?:<br\/>\s*)+/gi, '<ul class="list-disc pl-5 my-2">');
+  html = html.replace(/(?:<br\/>\s*)+<\/ul>/gi, '</ul>');
+  html = html.replace(/<\/li>(?:<br\/>\s*)+<li/gi, '</li><li');
+  html = html.replace(/(<br\/>)+<li/gi, '<li');
+  html = html.replace(/<\/li>(<br\/>)+/gi, '</li>');
+  html = html.replace(/(<br\/>)+<h/gi, '<h');
 
   return html;
 }
