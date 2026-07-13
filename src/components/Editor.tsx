@@ -73,9 +73,21 @@ interface EditorProps {
   onTitleChange: (title: string) => void;
   sermonId?: string | null;
   readOnly?: boolean;
+  pendingInsert?: { content: string; id: string } | null;
+  onInsertComplete?: () => void;
 }
 
-export default function Editor({ content, onChange, onAiAction, title, onTitleChange, sermonId, readOnly = false }: EditorProps) {
+export default function Editor({ 
+  content, 
+  onChange, 
+  onAiAction, 
+  title, 
+  onTitleChange, 
+  sermonId, 
+  readOnly = false,
+  pendingInsert,
+  onInsertComplete
+}: EditorProps) {
   const [showShareMenu, setShowShareMenu] = useState(false);
   const [copied, setCopied] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
@@ -262,6 +274,17 @@ export default function Editor({ content, onChange, onAiAction, title, onTitleCh
       editor.commands.setContent(content);
     }
   }, [sermonId, editor]);
+
+  // Handle pending external content insertion (AI suggestions or Bible verses)
+  useEffect(() => {
+    if (editor && pendingInsert && onInsertComplete) {
+      editor.commands.focus();
+      editor.commands.insertContent(pendingInsert.content);
+      // Immediately save to Firestore to bypass debounce and avoid race conditions
+      onChange(editor.getHTML());
+      onInsertComplete();
+    }
+  }, [pendingInsert, editor, onChange, onInsertComplete]);
 
   // Update editable state
   useEffect(() => {

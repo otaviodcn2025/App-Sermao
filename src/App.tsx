@@ -108,6 +108,7 @@ export default function App() {
   const [isSearching, setIsSearching] = useState(false);
   const [isSlideGeneratorOpen, setIsSlideGeneratorOpen] = useState(false);
   const [generatedSlides, setGeneratedSlides] = useState<Slide[]>([]);
+  const [pendingInsert, setPendingInsert] = useState<{ content: string; id: string } | null>(null);
 
   // Initialize responsive state
   useEffect(() => {
@@ -729,9 +730,14 @@ export default function App() {
   };
 
   const addVerseToEditor = (verseText: string, reference: string) => {
+    const insertHtml = `<blockquote><p>${verseText}</p><cite>— ${reference}</cite></blockquote><p></p>`;
     if (currentSermon) {
-      const newContent = currentSermon.content + `<blockquote><p>${verseText}</p><cite>— ${reference}</cite></blockquote><p></p>`;
-      updateSermon({ content: newContent });
+      if (currentView === 'editor') {
+        setPendingInsert({ content: insertHtml, id: Date.now().toString() });
+      } else {
+        const newContent = currentSermon.content + insertHtml;
+        updateSermon({ content: newContent });
+      }
     }
   };
 
@@ -1533,6 +1539,8 @@ export default function App() {
                 title={currentSermon.title}
                 sermonId={currentSermonId}
                 readOnly={currentSermon.userId !== user?.uid}
+                pendingInsert={pendingInsert}
+                onInsertComplete={() => setPendingInsert(null)}
               />
             ) : currentSermonId ? (
               <div className="h-[70vh] flex items-center justify-center">
@@ -1632,7 +1640,11 @@ export default function App() {
                  <button 
                   onClick={() => {
                     const newContent = (currentSermon?.content || '') + `<hr/><div class="ai-suggestion">${parseMarkdownToHtml(aiResponse)}</div>`;
-                    updateSermon({ content: newContent });
+                    if (currentSermon && currentView === 'editor') {
+                      setPendingInsert({ content: `<hr/><div class="ai-suggestion">${parseMarkdownToHtml(aiResponse)}</div>`, id: Date.now().toString() });
+                    } else {
+                      updateSermon({ content: newContent });
+                    }
                     setAiResponse(null);
                     setAiActionType(null);
                   }}
