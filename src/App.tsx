@@ -188,7 +188,21 @@ export default function App() {
       try {
         if (currentUser) {
           setUser(currentUser);
-          // Fetch profile
+          
+          // Try to load cached profile immediately for instant startup (Stale-While-Revalidate)
+          let cachedProfile: UserProfile | null = null;
+          try {
+            const cached = localStorage.getItem(`user_profile_${currentUser.uid}`);
+            if (cached) {
+              cachedProfile = JSON.parse(cached);
+              setUserProfile(cachedProfile);
+              setAuthLoading(false); // Release loading state instantly!
+            }
+          } catch (cacheErr) {
+            console.error('Erro ao ler perfil do cache inicial:', cacheErr);
+          }
+
+          // Fetch profile in background without blocking if cache is present
           const userRef = doc(db, 'users', currentUser.uid);
           let profileData: UserProfile | null = null;
           let docExists = false;
@@ -199,7 +213,8 @@ export default function App() {
             if (userSnap.exists()) {
               docExists = true;
               profileData = userSnap.data() as UserProfile;
-              // Salva no localStorage para uso offline posterior
+              setUserProfile(profileData);
+              // Save to localStorage for future offline use
               try {
                 localStorage.setItem(`user_profile_${currentUser.uid}`, JSON.stringify(profileData));
               } catch (storageErr) {
@@ -209,19 +224,20 @@ export default function App() {
           } catch (docErr: any) {
             isOffline = true;
             console.warn('Erro ao carregar perfil do Firestore (possivelmente offline):', docErr);
-            // Tenta obter do localStorage
-            try {
-              const cached = localStorage.getItem(`user_profile_${currentUser.uid}`);
-              if (cached) {
-                profileData = JSON.parse(cached);
-              }
-            } catch (cacheErr) {
-              console.error('Erro ao fazer parse do perfil cacheado:', cacheErr);
+            if (!cachedProfile) {
+              // If there was no cache and Firestore failed, try reading local cache again as fallback
+              try {
+                const cached = localStorage.getItem(`user_profile_${currentUser.uid}`);
+                if (cached) {
+                  profileData = JSON.parse(cached);
+                  setUserProfile(profileData);
+                }
+              } catch (cacheErr) {}
             }
           }
 
-          // Se não há dados de perfil (primeiro acesso offline, ou cache limpo), cria fallback temporário
-          if (!profileData) {
+          // If no profile data exists anywhere (first login or cleared cache), create temporary fallback
+          if (!profileData && !cachedProfile) {
             const isDefaultAdmin = currentUser.email === 'pastorotavio@gmail.com';
             profileData = {
               uid: currentUser.uid,
@@ -231,22 +247,25 @@ export default function App() {
               approved: isDefaultAdmin,
               createdAt: Date.now()
             };
+            setUserProfile(profileData);
           }
 
-          // Se o perfil não existe no Firestore e não estamos offline, salvamos ele no banco agora!
-          if (!docExists && !isOffline) {
+          const finalProfile = profileData || cachedProfile;
+
+          // Save default profile to Firestore if it doesn't exist and we are online
+          if (!docExists && !isOffline && finalProfile) {
             try {
-              await setDoc(userRef, profileData);
+              await setDoc(userRef, finalProfile);
               console.log('Documento de perfil inicial criado com sucesso no Firestore.');
             } catch (createErr) {
               console.warn('Não foi possível registrar o perfil do usuário no Firestore (offline?):', createErr);
             }
           }
 
-          // Auto-fix master admin profile if needed (usando setDoc com merge para garantir que funciona)
-          if (currentUser.email === 'pastorotavio@gmail.com' && (profileData.role !== 'admin' || !profileData.approved)) {
+          // Auto-fix master admin profile if needed (using setDoc with merge to ensure success)
+          if (currentUser.email === 'pastorotavio@gmail.com' && finalProfile && (finalProfile.role !== 'admin' || !finalProfile.approved)) {
             console.log('Detectado admin mestre sem permissões completas, corrigindo...');
-            const updatedData: UserProfile = { ...profileData, role: 'admin', approved: true };
+            const updatedData: UserProfile = { ...finalProfile, role: 'admin', approved: true };
             try {
               await setDoc(userRef, { role: 'admin', approved: true }, { merge: true });
             } catch (upErr) {
@@ -256,8 +275,6 @@ export default function App() {
             try {
               localStorage.setItem(`user_profile_${currentUser.uid}`, JSON.stringify(updatedData));
             } catch (err) {}
-          } else {
-            setUserProfile(profileData);
           }
         } else {
           setUser(null);
