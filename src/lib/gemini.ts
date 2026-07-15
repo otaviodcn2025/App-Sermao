@@ -2,7 +2,41 @@ import { GoogleGenAI } from "@google/genai";
 
 let aiClient: GoogleGenAI | null = null;
 
+async function callServerFn(fnName: string, ...args: any[]) {
+  const response = await fetch('/api/gemini/call', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ fn: fnName, args })
+  });
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.error || `Erro ao chamar IA (função ${fnName}).`);
+  }
+  const data = await response.json();
+  return data.result;
+}
+
+export async function generateContentDirect(args: any) {
+  const ai = getAIClient();
+  if (!ai) throw new Error("IA não disponível.");
+  const response = await ai.models.generateContent(args);
+  return response.text || "";
+}
+
 export function getAIClient() {
+  if (typeof window !== 'undefined') {
+    return {
+      models: {
+        generateContent: async (args: any) => {
+          const result = await callServerFn('generateContentDirect', args);
+          return { text: result };
+        }
+      }
+    } as any;
+  }
+
   if (!aiClient) {
     let apiKey = '';
     try {
@@ -16,7 +50,14 @@ export function getAIClient() {
       return null;
     }
     
-    const client = new GoogleGenAI({ apiKey });
+    const client = new GoogleGenAI({ 
+      apiKey,
+      httpOptions: {
+        headers: {
+          'User-Agent': 'aistudio-build',
+        }
+      }
+    });
     
     // Wrap generateContent to support exponential backoff on 503 / high demand errors
     const originalGenerateContent = client.models.generateContent.bind(client.models);
@@ -78,6 +119,49 @@ Responda sempre em Português (Brasil) de forma clara, inspiradora, respeitosa e
 export const DEFAULT_MODEL = "gemini-3.5-flash"; 
 
 export async function* generateSermonOutlineStream(topic: string, baseText?: string, context?: string, userPrompt?: string, style: 'traditional' | 'practical' | 'historical' = 'traditional') {
+  if (typeof window !== 'undefined') {
+    const params = new URLSearchParams({
+      topic,
+      baseText: baseText || '',
+      context: context || '',
+      userPrompt: userPrompt || '',
+      style
+    });
+    const response = await fetch(`/api/gemini/stream?${params.toString()}`);
+    if (!response.ok) {
+      const errText = await response.text();
+      throw new Error(errText || "Erro ao conectar com o servidor da IA.");
+    }
+    const reader = response.body?.getReader();
+    if (!reader) throw new Error("Não foi possível iniciar a transmissão.");
+    const decoder = new TextDecoder();
+    let buffer = '';
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
+      for (const line of lines) {
+        if (line.startsWith('data: ')) {
+          const dataStr = line.substring(6).trim();
+          if (dataStr === '[DONE]') return;
+          try {
+            const data = JSON.parse(dataStr);
+            if (data.chunk) {
+              yield data.chunk;
+            } else if (data.error) {
+              throw new Error(data.error);
+            }
+          } catch (e) {
+            console.error("Erro ao analisar chunk da transmissão:", e);
+          }
+        }
+      }
+    }
+    return;
+  }
+
   const ai = getAIClient();
   if (!ai) throw new Error("IA não disponível. Verifique se a Chave de API foi configurada corretamente.");
   
@@ -126,6 +210,9 @@ export async function* generateSermonOutlineStream(topic: string, baseText?: str
 }
 
 export async function generateSermonOutline(topic: string, baseText?: string, context?: string, userPrompt?: string, style: 'traditional' | 'practical' | 'historical' = 'traditional') {
+  if (typeof window !== 'undefined') {
+    return callServerFn('generateSermonOutline', topic, baseText, context, userPrompt, style);
+  }
   try {
     const ai = getAIClient();
     if (!ai) throw new Error("IA não disponível. Verifique se a Chave de API foi configurada corretamente.");
@@ -176,6 +263,9 @@ export async function generateSermonOutline(topic: string, baseText?: string, co
 }
 
 export async function generateIllustrations(content: string) {
+  if (typeof window !== 'undefined') {
+    return callServerFn('generateIllustrations', content);
+  }
   try {
     const ai = getAIClient();
     if (!ai) throw new Error("IA não disponível.");
@@ -201,6 +291,9 @@ export async function generateIllustrations(content: string) {
 }
 
 export async function simplifyContent(content: string) {
+  if (typeof window !== 'undefined') {
+    return callServerFn('simplifyContent', content);
+  }
   try {
     const ai = getAIClient();
     if (!ai) throw new Error("IA não disponível.");
@@ -226,6 +319,9 @@ export async function simplifyContent(content: string) {
 }
 
 export async function generateCreativeTitles(content: string) {
+  if (typeof window !== 'undefined') {
+    return callServerFn('generateCreativeTitles', content);
+  }
   try {
     const ai = getAIClient();
     if (!ai) throw new Error("IA não disponível.");
@@ -251,6 +347,9 @@ export async function generateCreativeTitles(content: string) {
 }
 
 export async function translateAndConsult(content: string) {
+  if (typeof window !== 'undefined') {
+    return callServerFn('translateAndConsult', content);
+  }
   try {
     const ai = getAIClient();
     if (!ai) throw new Error("IA não disponível.");
@@ -276,6 +375,9 @@ export async function translateAndConsult(content: string) {
 }
 
 export async function analyzeVerse(reference: string, textRef: string, libraryContext?: string) {
+  if (typeof window !== 'undefined') {
+    return callServerFn('analyzeVerse', reference, textRef, libraryContext);
+  }
   try {
     const ai = getAIClient();
     if (!ai) throw new Error("IA não disponível.");
@@ -305,6 +407,9 @@ export async function analyzeVerse(reference: string, textRef: string, libraryCo
 }
 
 export async function generateSlideDescriptions(sermonContent: string, specificPrompt?: string) {
+  if (typeof window !== 'undefined') {
+    return callServerFn('generateSlideDescriptions', sermonContent, specificPrompt);
+  }
   try {
     const ai = getAIClient();
     if (!ai) throw new Error("IA não disponível.");
@@ -346,6 +451,9 @@ export async function generateSlideDescriptions(sermonContent: string, specificP
 }
 
 export async function summarizeResource(title: string, content: string) {
+  if (typeof window !== 'undefined') {
+    return callServerFn('summarizeResource', title, content);
+  }
   try {
     const ai = getAIClient();
     if (!ai) throw new Error("IA não disponível.");
@@ -382,6 +490,9 @@ export async function summarizeResource(title: string, content: string) {
 }
 
 export async function semanticSearch(query: string, items: { id: string, title: string, summary?: string, type: string }[]) {
+  if (typeof window !== 'undefined') {
+    return callServerFn('semanticSearch', query, items);
+  }
   try {
     const ai = getAIClient();
     if (!ai) return items.filter(i => i.title.toLowerCase().includes(query.toLowerCase())).map(i => i.id);
@@ -412,6 +523,9 @@ export async function semanticSearch(query: string, items: { id: string, title: 
 }
 
 export async function analyzeThematicConnections(currentSermonContent: string, otherSermons: { id: string, title: string, content: string }[]) {
+  if (typeof window !== 'undefined') {
+    return callServerFn('analyzeThematicConnections', currentSermonContent, otherSermons);
+  }
   try {
     const ai = getAIClient();
     if (!ai) return null;
@@ -446,6 +560,9 @@ export async function analyzeThematicConnections(currentSermonContent: string, o
 }
 
 export async function getLexiconDetails(word: string, context: string) {
+  if (typeof window !== 'undefined') {
+    return callServerFn('getLexiconDetails', word, context);
+  }
   try {
     const ai = getAIClient();
     if (!ai) return null;
@@ -478,6 +595,9 @@ export async function getLexiconDetails(word: string, context: string) {
 }
 
 export async function improveSlide(slide: { title: string, content: string }, type: 'simplify' | 'topics' | 'verse') {
+  if (typeof window !== 'undefined') {
+    return callServerFn('improveSlide', slide, type);
+  }
   try {
     const ai = getAIClient();
     if (!ai) throw new Error("IA não disponível.");
@@ -518,6 +638,9 @@ export async function improveSlide(slide: { title: string, content: string }, ty
 }
 
 export async function generatePGMOutline(sermonTitle: string, sermonContent: string) {
+  if (typeof window !== 'undefined') {
+    return callServerFn('generatePGMOutline', sermonTitle, sermonContent);
+  }
   try {
     const ai = getAIClient();
     if (!ai) throw new Error("IA não disponível. Verifique se a Chave de API foi configurada corretamente.");
@@ -570,6 +693,9 @@ Instruções Adicionais de Formatação:
 }
 
 export async function getBlueLetterStudy(reference: string, verseText: string) {
+  if (typeof window !== 'undefined') {
+    return callServerFn('getBlueLetterStudy', reference, verseText);
+  }
   try {
     const ai = getAIClient();
     if (!ai) return null;
